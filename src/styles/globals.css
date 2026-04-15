@@ -1,0 +1,263 @@
+:root {
+  --bg: #f4f5ef;
+  --panel: #ffffff;
+  --muted: #6a6b62;
+  --text: #1f2119;
+  --brand: #1d6f4f;
+  --brand-soft: #e5f4ec;
+  --line: #dde1d0;
+  --warn: #ba1a1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top right, #d8ebdf 0%, transparent 45%),
+    radial-gradient(circle at left 30%, #e7edd0 0%, transparent 40%),
+    var(--bg);
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 2.6vw, 2.8rem);
+  letter-spacing: -0.02em;
+}
+
+.hero p {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 10px 25px rgba(18, 38, 26, 0.06);
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-top: 0.3rem;
+}
+
+.meta-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.grid {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.platforms {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.85rem;
+}
+
+.platform-card {
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.platform-card.active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  transform: translateY(-1px);
+}
+
+.platform-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+
+.pill.ok {
+  border-color: #9ed0b8;
+  color: #1c5f45;
+}
+
+.pill.no {
+  border-color: #e5b9b9;
+  color: #7a2f2f;
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+}
+
+textarea {
+  min-height: 160px;
+  resize: vertical;
+}
+
+label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.68rem 0.95rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+.secondary {
+  background: #eef2e1;
+  color: #2c3723;
+}
+
+.preview {
+  white-space: pre-wrap;
+  border: 1px dashed #c9cfb7;
+  border-radius: 12px;
+  padding: 0.9rem;
+  min-height: 120px;
+  background: #fbfcf6;
+}
+
+.history-item + .history-item {
+  margin-top: 0.7rem;
+}
+
+.history-item h4 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.history-item p {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.error {
+  color: var(--warn);
+  font-size: 0.88rem;
+  margin-top: 0.7rem;
+}
+
+.success {
+  color: #1c5f45;
+  font-size: 0.88rem;
+  margin-top: 0.7rem;
+}
+
+.dropzone {
+  margin-top: 0.6rem;
+  border: 1px dashed #bcc5a7;
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: #fafcf2;
+}
+
+.dropzone.drag-over {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.dropzone p {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.hidden-input {
+  display: none;
+}
+
+.image-preview-wrap {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.image-preview {
+  max-height: 220px;
+  width: auto;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  object-fit: contain;
+  background: #fff;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
