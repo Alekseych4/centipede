@@ -13,6 +13,11 @@ The app currently uses an in-memory mock backend (`src/lib/mockStore.ts`) and si
 - Build for production: `npm run build`
 - Start production server (after build): `npm run start`
 
+## Git Workflow
+
+- Create and use a dedicated branch for each task using the `feature/*` naming pattern.
+- Do not implement new changes directly on `master`/`main`.
+
 ## Testing And Validation
 
 There is no dedicated test suite or lint script yet.
