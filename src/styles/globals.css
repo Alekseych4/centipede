@@ -261,3 +261,261 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.lp-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.2rem 1rem 3rem;
+}
+
+.lp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0;
+}
+
+.lp-brand {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.lp-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.lp-nav a {
+  color: #354334;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.lp-top-cta {
+  text-decoration: none;
+  font-weight: 700;
+  color: #fff;
+  background: #1d6f4f;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+}
+
+.lp-hero {
+  margin-top: 2.4rem;
+  padding: 2rem;
+  border: 1px solid #c9d5c1;
+  border-radius: 22px;
+  background:
+    linear-gradient(130deg, rgba(255, 255, 255, 0.92), rgba(229, 244, 236, 0.75)),
+    radial-gradient(circle at 85% 20%, rgba(94, 157, 124, 0.25), transparent 45%);
+}
+
+.lp-kicker {
+  margin: 0;
+  color: #305a47;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.lp-hero h1 {
+  margin: 0.7rem 0 0;
+  font-size: clamp(2rem, 4.3vw, 3.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  max-width: 14ch;
+}
+
+.lp-subtitle {
+  margin: 0.9rem 0 0;
+  max-width: 60ch;
+  color: #46544a;
+}
+
+.lp-actions {
+  margin-top: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.lp-btn-primary,
+.lp-btn-secondary {
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 0.66rem 0.95rem;
+  font-weight: 700;
+}
+
+.lp-btn-primary {
+  background: #1d6f4f;
+  color: #fff;
+}
+
+.lp-btn-secondary {
+  background: #eef2e1;
+  color: #283126;
+}
+
+.lp-section {
+  margin-top: 2rem;
+}
+
+.lp-section-head h2 {
+  margin: 0;
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+}
+
+.lp-section-head p {
+  margin: 0.42rem 0 0;
+  color: #586557;
+}
+
+.lp-platform-grid,
+.lp-feature-grid,
+.lp-pricing-grid {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.lp-platform-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.lp-feature-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lp-pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lp-platform-card,
+.lp-feature-card,
+.lp-price-card {
+  background: #fff;
+  border: 1px solid #d8dfcf;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 10px 30px rgba(18, 38, 26, 0.06);
+}
+
+.lp-platform-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: #1d6f4f;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.lp-platform-card h3,
+.lp-feature-card h3,
+.lp-price-card h3 {
+  margin: 0.85rem 0 0;
+}
+
+.lp-platform-card p,
+.lp-feature-card p {
+  color: #576457;
+  margin: 0.45rem 0 0;
+}
+
+.lp-section-alt {
+  padding: 1.2rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid #d8dfcf;
+}
+
+.lp-note {
+  margin-top: 0.9rem;
+  color: #5f6d5b;
+  font-size: 0.9rem;
+}
+
+.lp-price {
+  margin: 0.6rem 0 0;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.lp-price span {
+  font-size: 0.9rem;
+  margin-left: 0.3rem;
+  color: #586557;
+  font-weight: 600;
+}
+
+.lp-price-description {
+  margin: 0.7rem 0 0;
+  color: #576457;
+}
+
+.lp-price-card ul {
+  margin: 0.7rem 0 0;
+  padding-left: 1rem;
+  color: #495647;
+}
+
+.lp-price-card li + li {
+  margin-top: 0.35rem;
+}
+
+.lp-price-cta {
+  margin-top: 1rem;
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 700;
+  color: #fff;
+  background: #1d6f4f;
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+}
+
+.lp-price-card.is-highlighted {
+  border-color: #74b090;
+  transform: translateY(-4px);
+}
+
+@media (max-width: 1000px) {
+  .lp-platform-grid,
+  .lp-feature-grid,
+  .lp-pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .lp-header {
+    flex-wrap: wrap;
+  }
+
+  .lp-nav {
+    width: 100%;
+    order: 3;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  .lp-hero {
+    padding: 1.3rem;
+  }
+
+  .lp-platform-grid,
+  .lp-feature-grid,
+  .lp-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}

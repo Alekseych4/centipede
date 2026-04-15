@@ -1,355 +1,155 @@
 import Head from "next/head";
-import { ChangeEvent, ClipboardEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FailureLog, HistoryResponseItem, PlatformDefinition, PlatformKey, ScheduleRequest } from "../lib/types";
+import Link from "next/link";
 
-function localDateTimeValue(date = new Date()) {
-  const d = new Date(date.getTime() + 60 * 60 * 1000);
-  return d.toISOString().slice(0, 16);
-}
+const platformItems = [
+  { name: "Telegram", short: "TG", note: "Fast channel and group delivery." },
+  { name: "X", short: "X", note: "Short-form, high-tempo social updates." },
+  { name: "Reddit", short: "RD", note: "Community-driven threads and posts." },
+  { name: "LinkedIn", short: "IN", note: "Professional audience positioning." }
+];
 
-interface HistoryPayload {
-  items: HistoryResponseItem[];
-  failures: FailureLog[];
-}
-
-export default function HomePage() {
-  const [platforms, setPlatforms] = useState<PlatformDefinition[]>([]);
-  const [history, setHistory] = useState<HistoryResponseItem[]>([]);
-  const [failures, setFailures] = useState<FailureLog[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [workerLoading, setWorkerLoading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const [error, setError] = useState("");
-  const [workerMessage, setWorkerMessage] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [content, setContent] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [scheduleAtLocal, setScheduleAtLocal] = useState(localDateTimeValue());
-  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformKey[]>([
-    "telegram",
-    "x",
-    "reddit",
-    "linkedin"
-  ]);
-  const [variants, setVariants] = useState<Partial<Record<PlatformKey, string>>>({});
-
-  async function loadInitial() {
-    const [platformRes, historyRes] = await Promise.all([fetch("/api/platforms"), fetch("/api/history")]);
-    const platformData = await platformRes.json();
-    const historyData = (await historyRes.json()) as HistoryPayload;
-
-    setPlatforms(platformData.platforms || []);
-    setHistory(historyData.items || []);
-    setFailures(historyData.failures || []);
+const featureItems = [
+  {
+    title: "One Composer, Multiple Variants",
+    description: "Write base content once, then override per platform when tone or length needs to differ."
+  },
+  {
+    title: "Queue + Worker Tick Model",
+    description: "Schedule in UTC and process posts through a deterministic queue worker for clear publish state."
+  },
+  {
+    title: "Failure Logging Built In",
+    description: "Track attempts and failure details per platform to understand what failed and why."
   }
+];
 
-  useEffect(() => {
-    loadInitial().catch(() => setError("Failed to load initial data."));
-  }, []);
+const pricingItems = [
+  {
+    tier: "Starter",
+    price: "$0",
+    cadence: "/month",
+    description: "Local MVP evaluation for solo testing.",
+    points: ["Manual worker tick", "4 platform adapters", "In-memory data store"]
+  },
+  {
+    tier: "Builder",
+    price: "$24",
+    cadence: "/month",
+    description: "Suggested plan shape for early teams.",
+    points: ["All Starter features", "Priority queue visibility", "Exportable activity feed"],
+    highlighted: true
+  },
+  {
+    tier: "Scale",
+    price: "$89",
+    cadence: "/month",
+    description: "Template for larger scheduling operations.",
+    points: ["All Builder features", "Role-based workspace access", "Extended retention windows"]
+  }
+];
 
-  const selectedLabels = useMemo(() => {
-    return platforms
-      .filter((item) => selectedPlatforms.includes(item.key))
-      .map((item) => item.label)
-      .join(", ");
-  }, [platforms, selectedPlatforms]);
-
-  const togglePlatform = (key: PlatformKey) => {
-    setSelectedPlatforms((current) =>
-      current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
-    );
-  };
-
-  const updateVariant = (platform: PlatformKey, value: string) => {
-    setVariants((current) => ({
-      ...current,
-      [platform]: value
-    }));
-  };
-
-  const loadImageFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("Only image files are supported.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be 5MB or smaller.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageUrl(String(reader.result || ""));
-      setError("");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const onFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      loadImageFile(file);
-    }
-  };
-
-  const onImageDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragOver(false);
-    const file = event.dataTransfer.files?.[0];
-    if (file) {
-      loadImageFile(file);
-    }
-  };
-
-  const onImagePaste = (event: ClipboardEvent<HTMLDivElement>) => {
-    const file = event.clipboardData.files?.[0];
-    if (file) {
-      event.preventDefault();
-      loadImageFile(file);
-    }
-  };
-
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setError("");
-    setLoading(true);
-
-    const payload: ScheduleRequest = {
-      content,
-      imageUrl: imageUrl.trim() || undefined,
-      selectedPlatforms,
-      scheduleAtUtc: new Date(scheduleAtLocal).toISOString(),
-      variants
-    };
-
-    try {
-      const response = await fetch("/api/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Schedule request failed.");
-      }
-
-      setContent("");
-      setImageUrl("");
-      setScheduleAtLocal(localDateTimeValue());
-      setVariants({});
-      await loadInitial();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const runWorker = async () => {
-    setWorkerLoading(true);
-    setError("");
-    setWorkerMessage("");
-    try {
-      const response = await fetch("/api/worker/tick", { method: "POST" });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Worker failed.");
-      }
-      const result = data.result;
-      setWorkerMessage(
-        `Processed ${result.processed}, succeeded ${result.succeeded}, failed ${result.failed}, queued ${result.remainingQueued}.`
-      );
-      await loadInitial();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error.");
-    } finally {
-      setWorkerLoading(false);
-    }
-  };
-
+export default function LandingPage() {
   return (
     <>
       <Head>
-        <title>Centipede | Social Scheduler MVP</title>
+        <title>Centipede | Cross-Post Scheduling</title>
         <meta
           name="description"
-          content="MVP crossposting scheduler for Telegram, LinkedIn, Reddit, and X."
+          content="Centipede helps teams schedule and process cross-platform posts for Telegram, X, Reddit, and LinkedIn."
         />
       </Head>
 
-      <main className="container">
-        <section className="hero">
-          <h1>Social Scheduler MVP</h1>
-          <p>Write once, add platform variants, schedule in UTC, and execute via queue worker.</p>
+      <main className="lp-page">
+        <header className="lp-header">
+          <div className="lp-brand">Centipede</div>
+          <nav className="lp-nav" aria-label="Primary">
+            <a href="#">Features</a>
+            <a href="#">Product</a>
+            <a href="#">Pricing</a>
+            <a href="#">FAQ</a>
+          </nav>
+          <Link className="lp-top-cta" href="/studio">
+            Open MVP
+          </Link>
+        </header>
+
+        <section className="lp-hero">
+          <p className="lp-kicker">Cross-post scheduling, focused on execution</p>
+          <h1>Plan once, adapt per platform, and process reliably.</h1>
+          <p className="lp-subtitle">
+            Centipede is a Next.js MVP for scheduling posts across Telegram, X, Reddit, and LinkedIn with queue-based
+            processing and platform-specific variants.
+          </p>
+          <div className="lp-actions">
+            <Link className="lp-btn-primary" href="/studio">
+              Go To Studio
+            </Link>
+            <a className="lp-btn-secondary" href="#">
+              View Demo Flow
+            </a>
+          </div>
         </section>
 
-        <div className="layout">
-          <form className="panel" onSubmit={onSubmit}>
-            <h2>Compose and Schedule</h2>
-            <p className="meta">MVP scope: text posts + optional single image, no analytics, no team features.</p>
+        <section className="lp-section">
+          <div className="lp-section-head">
+            <h2>Featured Platforms</h2>
+            <p>Built around the channels this MVP currently simulates.</p>
+          </div>
+          <div className="lp-platform-grid">
+            {platformItems.map((platform) => (
+              <article key={platform.name} className="lp-platform-card">
+                <span className="lp-platform-icon">{platform.short}</span>
+                <h3>{platform.name}</h3>
+                <p>{platform.note}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-            <div className="grid platforms">
-              {platforms.map((platform) => {
-                const active = selectedPlatforms.includes(platform.key);
-                return (
-                  <article
-                    key={platform.key}
-                    className={`card platform-card ${active ? "active" : ""}`}
-                    onClick={() => togglePlatform(platform.key)}
-                  >
-                    <div className="platform-row">
-                      <strong>{platform.label}</strong>
-                      <span className={`pill ${platform.connected ? "ok" : "no"}`}>
-                        {platform.connected ? platform.authType : "not connected"}
-                      </span>
-                    </div>
-                    <ul className="meta-list">
-                      {platform.constraints.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </article>
-                );
-              })}
-            </div>
+        <section className="lp-section lp-section-alt">
+          <div className="lp-section-head">
+            <h2>Current MVP Functionality</h2>
+            <p>What the project supports now, without external API integrations.</p>
+          </div>
+          <div className="lp-feature-grid">
+            {featureItems.map((item) => (
+              <article key={item.title} className="lp-feature-card">
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </article>
+            ))}
+          </div>
+          <p className="lp-note">
+            Note: adapters are mocked and the data store is process-memory only in the current implementation.
+          </p>
+        </section>
 
-            <div className="grid">
-              <div>
-                <label htmlFor="content">Base content</label>
-                <textarea
-                  id="content"
-                  placeholder="Shared text for all platforms..."
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="imageUrl">Optional single image (URL, drop, or paste)</label>
-                <input
-                  id="imageUrl"
-                  value={imageUrl}
-                  onChange={(event) => setImageUrl(event.target.value)}
-                  placeholder="https://..."
-                />
-                <div
-                  className={`dropzone ${dragOver ? "drag-over" : ""}`}
-                  tabIndex={0}
-                  onPaste={onImagePaste}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setDragOver(true);
-                  }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={onImageDrop}
-                >
-                  <p>Drop image here or focus this box and paste from clipboard.</p>
-                  <button
-                    className="secondary"
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Choose Image
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden-input"
-                    onChange={onFileSelected}
-                  />
-                </div>
-                {imageUrl && (
-                  <div className="image-preview-wrap">
-                    <img className="image-preview" src={imageUrl} alt="Post attachment preview" />
-                    <button className="secondary" type="button" onClick={() => setImageUrl("")}>
-                      Remove Image
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="scheduleAt">Publish time (local input, stored as UTC)</label>
-                <input
-                  id="scheduleAt"
-                  type="datetime-local"
-                  value={scheduleAtLocal}
-                  onChange={(event) => setScheduleAtLocal(event.target.value)}
-                />
-                <p className="meta">UTC value: {new Date(scheduleAtLocal).toISOString()}</p>
-              </div>
-
-              <div className="grid">
-                {selectedPlatforms.map((platform) => (
-                  <div key={platform}>
-                    <label htmlFor={`variant-${platform}`}>
-                      {platform.toUpperCase()} variant (optional override)
-                    </label>
-                    <textarea
-                      id={`variant-${platform}`}
-                      value={variants[platform] || ""}
-                      onChange={(event) => updateVariant(platform, event.target.value)}
-                      placeholder="Leave empty to use base content."
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {error && <p className="error">{error}</p>}
-            {workerMessage && <p className="success">{workerMessage}</p>}
-
-            <div className="actions">
-              <button className="primary" type="submit" disabled={loading}>
-                {loading ? "Scheduling..." : "Queue Post"}
-              </button>
-              <button className="secondary" type="button" onClick={runWorker} disabled={workerLoading}>
-                {workerLoading ? "Running..." : "Run Worker Tick"}
-              </button>
-            </div>
-          </form>
-
-          <aside className="grid">
-            <section className="panel">
-              <h2>Preview</h2>
-              <p className="meta">{selectedLabels || "No platform selected."}</p>
-              <div className="preview">{content || "Base content preview appears here."}</div>
-            </section>
-
-            <section className="panel">
-              <h2>Queue and Status</h2>
-              <div>
-                {history.length === 0 && <p className="meta">No scheduled posts yet.</p>}
-                {history.map((item) => (
-                  <article key={item.post.id} className="card history-item">
-                    <h4>{item.post.selectedPlatforms.join(", ")}</h4>
-                    <p>{item.post.content.slice(0, 120)}</p>
-                    <p className="meta">
-                      {item.post.status.toUpperCase()} • {new Date(item.post.scheduleAtUtc).toUTCString()}
-                    </p>
-                    <p className="meta">Jobs: {item.jobs.map((job) => `${job.platform}:${job.status}(${job.attempts}/${job.maxAttempts})`).join(" | ")}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="panel">
-              <h2>Failure Log</h2>
-              {failures.length === 0 && <p className="meta">No failures logged.</p>}
-              {failures.slice(0, 6).map((log) => (
-                <article key={log.id} className="card history-item">
-                  <h4>{log.platform.toUpperCase()}</h4>
-                  <p>{log.message}</p>
-                  <p className="meta">
-                    Attempt {log.attempt} • {new Date(log.createdAt).toUTCString()}
-                  </p>
-                </article>
-              ))}
-            </section>
-          </aside>
-        </div>
+        <section className="lp-section">
+          <div className="lp-section-head">
+            <h2>Pricing Layout</h2>
+            <p>Placeholder structure based on your requested visual direction.</p>
+          </div>
+          <div className="lp-pricing-grid">
+            {pricingItems.map((plan) => (
+              <article key={plan.tier} className={`lp-price-card ${plan.highlighted ? "is-highlighted" : ""}`}>
+                <h3>{plan.tier}</h3>
+                <p className="lp-price">
+                  {plan.price}
+                  <span>{plan.cadence}</span>
+                </p>
+                <p className="lp-price-description">{plan.description}</p>
+                <ul>
+                  {plan.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+                <a href="#" className="lp-price-cta">
+                  Choose {plan.tier}
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
       </main>
     </>
   );
