@@ -2,10 +2,10 @@ import Head from "next/head";
 import Link from "next/link";
 
 const platformItems = [
-  { name: "Telegram", short: "TG", note: "Fast channel and group delivery." },
-  { name: "X", short: "X", note: "Short-form, high-tempo social updates." },
-  { name: "Reddit", short: "RD", note: "Community-driven threads and posts." },
-  { name: "LinkedIn", short: "IN", note: "Professional audience positioning." }
+  { name: "Telegram", note: "Fast channel and group delivery." },
+  { name: "X", note: "Short-form, high-tempo social updates." },
+  { name: "Reddit", note: "Community-driven threads and posts." },
+  { name: "LinkedIn", note: "Professional audience positioning." }
 ];
 
 const featureItems = [
@@ -47,6 +47,38 @@ const pricingItems = [
     points: ["All Builder features", "Role-based workspace access", "Extended retention windows"]
   }
 ];
+
+function PlatformIcon({ platform }: { platform: string }) {
+  if (platform === "Telegram") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21.6 4.7a1.2 1.2 0 0 0-1.3-.2L2.8 11.2a1 1 0 0 0 .1 1.9l4.2 1.3 1.7 5.1a1 1 0 0 0 1.8.2l2.4-3.3 4.3 3.2a1 1 0 0 0 1.6-.6l2.5-13.1a1.2 1.2 0 0 0-.8-1.2Zm-3.8 3.5-8 7.4-.5 1.8-.9-2.8-3.5-1.1 12.9-5.3Z" />
+      </svg>
+    );
+  }
+
+  if (platform === "X") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18.9 3H22l-6.8 7.7L23 21h-6.1l-4.8-6.2L6.7 21H3.6l7.2-8.2L1 3h6.3l4.3 5.7L18.9 3Zm-1.1 16h1.7L6.4 4.9H4.6L17.8 19Z" />
+      </svg>
+    );
+  }
+
+  if (platform === "Reddit") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20.6 10.4a2 2 0 0 0-3.4-1.4 9.3 9.3 0 0 0-4.4-1.4l.9-4 2.8.6a1.8 1.8 0 1 0 .3-1.2L13.5 2a.7.7 0 0 0-.8.5l-1 4.8A9.2 9.2 0 0 0 7 8.8a2 2 0 1 0-1.6 3.2v.3c0 3.2 3 5.8 6.7 5.8 3.7 0 6.7-2.6 6.7-5.8v-.3a2 2 0 0 0 1.8-1.6Zm-10 3.3a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Zm2.9 2.7c-1.2 0-2.3-.4-3-.9a.6.6 0 1 1 .8-.9c.5.4 1.3.6 2.2.6.9 0 1.7-.2 2.2-.6a.6.6 0 1 1 .8.9c-.7.5-1.8.9-3 .9Zm.3-2.7a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6.3 8.8h3.6v11H6.3v-11Zm1.8-5a2.1 2.1 0 1 1 0 4.2 2.1 2.1 0 0 1 0-4.2ZM12.1 8.8h3.4v1.5h.1c.5-.9 1.7-1.9 3.5-1.9 3.7 0 4.4 2.4 4.4 5.6v5.8H20v-5.1c0-1.2 0-2.8-1.7-2.8-1.7 0-2 1.3-2 2.7v5.2h-3.6v-11Z" />
+    </svg>
+  );
+}
 
 export default function LandingPage() {
   return (
@@ -98,7 +130,9 @@ export default function LandingPage() {
           <div className="lp-platform-grid">
             {platformItems.map((platform) => (
               <article key={platform.name} className="lp-platform-card">
-                <span className="lp-platform-icon">{platform.short}</span>
+                <span className={`lp-platform-icon lp-platform-icon-${platform.name.toLowerCase()}`}>
+                  <PlatformIcon platform={platform.name} />
+                </span>
                 <h3>{platform.name}</h3>
                 <p>{platform.note}</p>
               </article>
