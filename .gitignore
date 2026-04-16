@@ -10,3 +10,10 @@ yarn-error.log*
 .pnp.js
 
 .vscode/*
+.idea/
+.codex
+.DS_Store
+
+# clerk configuration (can include secrets)
+/.clerk/
+.env.local
