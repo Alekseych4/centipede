@@ -50,3 +50,14 @@ export function getStaticPlatform(platform: PlatformKey): StaticPlatformDefiniti
   }
   return match;
 }
+
+export function getDefaultPlatformDefinitions(): PlatformDefinition[] {
+  return PLATFORM_DEFINITIONS.map((platform) => ({
+    ...platform,
+    connected: false,
+    needsReconnect: false,
+    supportsScheduling: false,
+    accountLabel: undefined,
+    warnings: platform.key === "reddit" ? ["Reddit publishes self-posts only and ignores the shared image in v1."] : []
+  }));
+}

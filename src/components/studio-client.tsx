@@ -20,6 +20,7 @@ import {
   ScheduleRequest,
   TelegramConnectionRequest
 } from "../lib/types";
+import { getDefaultPlatformDefinitions } from "../lib/platforms";
 
 function localDateTimeValue(date = new Date()) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
@@ -51,7 +52,7 @@ const OAUTH_PLATFORMS: PlatformKey[] = ["x", "reddit", "linkedin"];
 
 export function StudioClient({ userName, userEmail }: StudioClientProps) {
   const searchParams = useSearchParams();
-  const [platforms, setPlatforms] = useState<PlatformDefinition[]>([]);
+  const [platforms, setPlatforms] = useState<PlatformDefinition[]>(() => getDefaultPlatformDefinitions());
   const [history, setHistory] = useState<HistoryResponseItem[]>([]);
   const [failures, setFailures] = useState<FailureLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,13 +78,26 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
   });
 
   async function loadInitial() {
-    const [platformRes, historyRes] = await Promise.all([fetch("/api/platforms"), fetch("/api/history")]);
-    const platformData = await platformRes.json();
-    const historyData = (await historyRes.json()) as HistoryPayload;
+    const [platformRes, historyRes] = await Promise.allSettled([fetch("/api/platforms"), fetch("/api/history")]);
 
-    setPlatforms(platformData.platforms || []);
-    setHistory(historyData.items || []);
-    setFailures(historyData.failures || []);
+    if (platformRes.status === "fulfilled") {
+      const platformData = await platformRes.value.json();
+      if (platformRes.value.ok && Array.isArray(platformData.platforms)) {
+        setPlatforms(platformData.platforms);
+      } else {
+        setPlatforms(getDefaultPlatformDefinitions());
+      }
+    } else {
+      setPlatforms(getDefaultPlatformDefinitions());
+    }
+
+    if (historyRes.status === "fulfilled") {
+      const historyData = (await historyRes.value.json()) as HistoryPayload;
+      if (historyRes.value.ok) {
+        setHistory(historyData.items || []);
+        setFailures(historyData.failures || []);
+      }
+    }
   }
 
   useEffect(() => {
