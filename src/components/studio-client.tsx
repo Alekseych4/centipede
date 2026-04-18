@@ -1,11 +1,29 @@
 "use client";
 
-import { ChangeEvent, ClipboardEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FailureLog, HistoryResponseItem, PlatformDefinition, PlatformKey, ScheduleRequest } from "../lib/types";
+import {
+  ChangeEvent,
+  ClipboardEvent,
+  DragEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  FailureLog,
+  HistoryResponseItem,
+  MediaAsset,
+  PlatformDefinition,
+  PlatformKey,
+  ScheduleRequest,
+  TelegramConnectionRequest
+} from "../lib/types";
 
 function localDateTimeValue(date = new Date()) {
-  const d = new Date(date.getTime() + 60 * 60 * 1000);
-  return d.toISOString().slice(0, 16);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
+  return local.toISOString().slice(0, 16);
 }
 
 interface HistoryPayload {
@@ -18,27 +36,45 @@ interface StudioClientProps {
   userEmail: string | null;
 }
 
+type PendingImage =
+  | {
+      kind: "dataUrl";
+      value: string;
+      fileName?: string;
+    }
+  | {
+      kind: "remoteUrl";
+      value: string;
+    };
+
+const OAUTH_PLATFORMS: PlatformKey[] = ["x", "reddit", "linkedin"];
+
 export function StudioClient({ userName, userEmail }: StudioClientProps) {
+  const searchParams = useSearchParams();
   const [platforms, setPlatforms] = useState<PlatformDefinition[]>([]);
   const [history, setHistory] = useState<HistoryResponseItem[]>([]);
   const [failures, setFailures] = useState<FailureLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [workerLoading, setWorkerLoading] = useState(false);
+  const [connectLoading, setConnectLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
   const [workerMessage, setWorkerMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [content, setContent] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [remoteImageUrl, setRemoteImageUrl] = useState("");
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
+  const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const [scheduleAtLocal, setScheduleAtLocal] = useState(localDateTimeValue());
-  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformKey[]>([
-    "telegram",
-    "x",
-    "reddit",
-    "linkedin"
-  ]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformKey[]>([]);
   const [variants, setVariants] = useState<Partial<Record<PlatformKey, string>>>({});
+  const [redditTitle, setRedditTitle] = useState("");
+  const [redditSubreddit, setRedditSubreddit] = useState("");
+  const [telegramConfig, setTelegramConfig] = useState<TelegramConnectionRequest>({
+    botToken: "",
+    chatId: ""
+  });
 
   async function loadInitial() {
     const [platformRes, historyRes] = await Promise.all([fetch("/api/platforms"), fetch("/api/history")]);
@@ -54,6 +90,20 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     loadInitial().catch(() => setError("Failed to load initial data."));
   }, []);
 
+  useEffect(() => {
+    const connected = searchParams?.get("connected");
+    const connectionError = searchParams?.get("connection_error");
+    const message = searchParams?.get("message");
+
+    if (connected === "1") {
+      setWorkerMessage("Platform connection saved.");
+    }
+
+    if (connectionError === "1") {
+      setError(message || "Platform connection failed.");
+    }
+  }, [searchParams]);
+
   const selectedLabels = useMemo(() => {
     return platforms
       .filter((item) => selectedPlatforms.includes(item.key))
@@ -61,7 +111,21 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
       .join(", ");
   }, [platforms, selectedPlatforms]);
 
+  const connectedPlatforms = useMemo(() => {
+    return platforms.filter((item) => item.connected);
+  }, [platforms]);
+
+  const selectedPlatformDefinitions = useMemo(() => {
+    return platforms.filter((item) => selectedPlatforms.includes(item.key));
+  }, [platforms, selectedPlatforms]);
+
   const togglePlatform = (key: PlatformKey) => {
+    const platform = platforms.find((item) => item.key === key);
+    if (!platform?.connected) {
+      setError(`${platform?.label || key} is not connected.`);
+      return;
+    }
+
     setSelectedPlatforms((current) =>
       current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
     );
@@ -74,6 +138,13 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     }));
   };
 
+  const setImageFromDataUrl = (value: string, fileName?: string) => {
+    setPendingImage({ kind: "dataUrl", value, fileName });
+    setImagePreviewUrl(value);
+    setRemoteImageUrl("");
+    setError("");
+  };
+
   const loadImageFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
       setError("Only image files are supported.");
@@ -83,11 +154,9 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
       setError("Image must be 5MB or smaller.");
       return;
     }
+
     const reader = new FileReader();
-    reader.onload = () => {
-      setImageUrl(String(reader.result || ""));
-      setError("");
-    };
+    reader.onload = () => setImageFromDataUrl(String(reader.result || ""), file.name);
     reader.readAsDataURL(file);
   };
 
@@ -115,20 +184,61 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     }
   };
 
+  async function uploadPendingImage(): Promise<MediaAsset | undefined> {
+    if (!pendingImage) {
+      return undefined;
+    }
+
+    const payload =
+      pendingImage.kind === "dataUrl"
+        ? {
+            dataUrl: pendingImage.value,
+            fileName: pendingImage.fileName
+          }
+        : {
+            remoteUrl: pendingImage.value
+          };
+
+    const response = await fetch("/api/media/upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Image upload failed.");
+    }
+
+    return data.asset as MediaAsset;
+  }
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    setWorkerMessage("");
     setLoading(true);
 
-    const payload: ScheduleRequest = {
-      content,
-      imageUrl: imageUrl.trim() || undefined,
-      selectedPlatforms,
-      scheduleAtUtc: new Date(scheduleAtLocal).toISOString(),
-      variants
-    };
-
     try {
+      const image = await uploadPendingImage();
+      const payload: ScheduleRequest = {
+        content,
+        selectedPlatforms,
+        scheduleAtUtc: new Date(scheduleAtLocal).toISOString(),
+        variants,
+        image,
+        platformOptions: selectedPlatforms.includes("reddit")
+          ? {
+              reddit: {
+                title: redditTitle,
+                subreddit: redditSubreddit
+              }
+            }
+          : undefined
+      };
+
       const response = await fetch("/api/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -141,9 +251,13 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
       }
 
       setContent("");
-      setImageUrl("");
+      setRemoteImageUrl("");
+      setImagePreviewUrl("");
+      setPendingImage(null);
       setScheduleAtLocal(localDateTimeValue());
       setVariants({});
+      setRedditTitle("");
+      setRedditSubreddit("");
       await loadInitial();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
@@ -174,6 +288,57 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     }
   };
 
+  const connectTelegram = async () => {
+    setConnectLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/connections/telegram", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(telegramConfig)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save Telegram connection.");
+      }
+
+      setTelegramConfig({ botToken: "", chatId: "" });
+      await loadInitial();
+      setWorkerMessage("Telegram connection saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error.");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const startOAuthConnection = (platform: PlatformKey) => {
+    window.location.href = `/api/connections/${platform}/start`;
+  };
+
+  const disconnect = async (platform: PlatformKey) => {
+    setConnectLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/connections/${platform}`, {
+        method: "DELETE"
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Disconnect failed.");
+      }
+
+      setSelectedPlatforms((current) => current.filter((item) => item !== platform));
+      await loadInitial();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error.");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
   return (
     <main className="container">
       <section className="hero">
@@ -184,13 +349,13 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           </p>
         </div>
         <h1>Social Scheduler MVP</h1>
-        <p>Write once, add platform variants, schedule in UTC, and execute via queue worker.</p>
+        <p>Connect accounts, upload one durable image, schedule in UTC, and execute via queue worker.</p>
       </section>
 
       <div className="layout">
         <form className="panel" onSubmit={onSubmit}>
           <h2>Compose and Schedule</h2>
-          <p className="meta">MVP scope: text posts + optional single image, no analytics, no team features.</p>
+          <p className="meta">Current scope: connected user accounts, single post per platform, optional single image.</p>
 
           <div className="grid platforms">
             {platforms.map((platform) => {
@@ -204,18 +369,84 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                   <div className="platform-row">
                     <strong>{platform.label}</strong>
                     <span className={`pill ${platform.connected ? "ok" : "no"}`}>
-                      {platform.connected ? platform.authType : "not connected"}
+                      {platform.connected ? platform.accountLabel || platform.authType : "not connected"}
                     </span>
                   </div>
                   <ul className="meta-list">
                     {platform.constraints.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
+                    {platform.warnings.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
                   </ul>
+                  <div className="actions">
+                    {platform.key === "telegram" ? null : !platform.connected ? (
+                      <button
+                        className="secondary"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startOAuthConnection(platform.key);
+                        }}
+                      >
+                        Connect
+                      </button>
+                    ) : (
+                      <button
+                        className="secondary"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void disconnect(platform.key);
+                        }}
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                  </div>
                 </article>
               );
             })}
           </div>
+
+          <section className="panel">
+            <h3>Connections</h3>
+            <p className="meta">
+              Connected: {connectedPlatforms.length === 0 ? "none" : connectedPlatforms.map((item) => item.label).join(", ")}
+            </p>
+            <div className="grid">
+              <div>
+                <label htmlFor="telegramToken">Telegram bot token</label>
+                <input
+                  id="telegramToken"
+                  value={telegramConfig.botToken}
+                  onChange={(event) => setTelegramConfig((current) => ({ ...current, botToken: event.target.value }))}
+                  placeholder="123456:ABCDEF..."
+                />
+              </div>
+              <div>
+                <label htmlFor="telegramChatId">Telegram chat id or channel username</label>
+                <input
+                  id="telegramChatId"
+                  value={telegramConfig.chatId}
+                  onChange={(event) => setTelegramConfig((current) => ({ ...current, chatId: event.target.value }))}
+                  placeholder="@channel_or_-100123"
+                />
+              </div>
+            </div>
+            <div className="actions">
+              <button className="secondary" type="button" disabled={connectLoading} onClick={() => void connectTelegram()}>
+                {connectLoading ? "Saving..." : "Save Telegram Connection"}
+              </button>
+              {platforms.find((item) => item.key === "telegram")?.connected ? (
+                <button className="secondary" type="button" disabled={connectLoading} onClick={() => void disconnect("telegram")}>
+                  Disconnect Telegram
+                </button>
+              ) : null}
+            </div>
+            <p className="meta">OAuth connections: X, Reddit, and LinkedIn use the connect buttons on their platform cards.</p>
+          </section>
 
           <div className="grid">
             <div>
@@ -229,11 +460,16 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
             </div>
 
             <div>
-              <label htmlFor="imageUrl">Optional single image (URL, drop, or paste)</label>
+              <label htmlFor="imageUrl">Optional single image (upload, paste, drop, or remote URL)</label>
               <input
                 id="imageUrl"
-                value={imageUrl}
-                onChange={(event) => setImageUrl(event.target.value)}
+                value={remoteImageUrl}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setRemoteImageUrl(value);
+                  setImagePreviewUrl(value);
+                  setPendingImage(value.trim() ? { kind: "remoteUrl", value: value.trim() } : null);
+                }}
                 placeholder="https://..."
               />
               <div
@@ -259,10 +495,18 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                   onChange={onFileSelected}
                 />
               </div>
-              {imageUrl && (
+              {imagePreviewUrl && (
                 <div className="image-preview-wrap">
-                  <img className="image-preview" src={imageUrl} alt="Post attachment preview" />
-                  <button className="secondary" type="button" onClick={() => setImageUrl("")}>
+                  <img className="image-preview" src={imagePreviewUrl} alt="Post attachment preview" />
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => {
+                      setRemoteImageUrl("");
+                      setImagePreviewUrl("");
+                      setPendingImage(null);
+                    }}
+                  >
                     Remove Image
                   </button>
                 </div>
@@ -279,21 +523,44 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
               />
               <p className="meta">UTC value: {new Date(scheduleAtLocal).toISOString()}</p>
             </div>
-
-            <div className="grid">
-              {selectedPlatforms.map((platform) => (
-                <div key={platform}>
-                  <label htmlFor={`variant-${platform}`}>{platform.toUpperCase()} variant (optional override)</label>
-                  <textarea
-                    id={`variant-${platform}`}
-                    value={variants[platform] || ""}
-                    onChange={(event) => updateVariant(platform, event.target.value)}
-                    placeholder="Leave empty to use base content."
-                  />
-                </div>
-              ))}
-            </div>
           </div>
+
+          <div className="grid">
+            {selectedPlatformDefinitions.map((platform) => (
+              <div key={platform.key}>
+                <label htmlFor={`variant-${platform.key}`}>{platform.label} variant</label>
+                <textarea
+                  id={`variant-${platform.key}`}
+                  value={variants[platform.key] || ""}
+                  onChange={(event) => updateVariant(platform.key, event.target.value)}
+                  placeholder="Leave empty to use base content."
+                />
+              </div>
+            ))}
+          </div>
+
+          {selectedPlatforms.includes("reddit") ? (
+            <div className="grid">
+              <div>
+                <label htmlFor="redditSubreddit">Reddit subreddit</label>
+                <input
+                  id="redditSubreddit"
+                  value={redditSubreddit}
+                  onChange={(event) => setRedditSubreddit(event.target.value)}
+                  placeholder="sideproject"
+                />
+              </div>
+              <div>
+                <label htmlFor="redditTitle">Reddit title</label>
+                <input
+                  id="redditTitle"
+                  value={redditTitle}
+                  onChange={(event) => setRedditTitle(event.target.value)}
+                  placeholder="Title required for Reddit self-posts"
+                />
+              </div>
+            </div>
+          ) : null}
 
           {error && <p className="error">{error}</p>}
           {workerMessage && <p className="success">{workerMessage}</p>}
@@ -332,6 +599,18 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                       .map((job) => `${job.platform}:${job.status}(${job.attempts}/${job.maxAttempts})`)
                       .join(" | ")}
                   </p>
+                  {item.jobs.some((job) => job.externalUrl) ? (
+                    <p className="meta">
+                      Links:{" "}
+                      {item.jobs
+                        .filter((job) => job.externalUrl)
+                        .map((job) => (
+                          <a key={job.id} href={job.externalUrl} target="_blank" rel="noreferrer">
+                            {job.platform}
+                          </a>
+                        ))}
+                    </p>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -340,7 +619,7 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           <section className="panel">
             <h2>Failure Log</h2>
             {failures.length === 0 && <p className="meta">No failures logged.</p>}
-            {failures.slice(0, 6).map((log) => (
+            {failures.slice(0, 8).map((log) => (
               <article key={log.id} className="card history-item">
                 <h4>{log.platform.toUpperCase()}</h4>
                 <p>{log.message}</p>
@@ -349,6 +628,15 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                 </p>
               </article>
             ))}
+          </section>
+
+          <section className="panel">
+            <h2>Connection Notes</h2>
+            <ul className="meta-list">
+              {OAUTH_PLATFORMS.map((platform) => (
+                <li key={platform}>{platform.toUpperCase()} connections use OAuth and redirect back to the studio.</li>
+              ))}
+            </ul>
           </section>
         </aside>
       </div>

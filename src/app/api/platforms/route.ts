@@ -1,12 +1,12 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { listPlatforms } from "../../../lib/mockStore";
+import { requireUserId } from "../../../lib/auth";
+import { listPlatforms } from "../../../lib/connections";
 
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const userId = await requireUserId();
+  if (userId instanceof NextResponse) {
+    return userId;
   }
 
-  return NextResponse.json({ platforms: listPlatforms() });
+  return NextResponse.json({ platforms: await listPlatforms(userId) });
 }

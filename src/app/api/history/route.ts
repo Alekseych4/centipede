@@ -1,12 +1,15 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { listFailureLogs, listHistory } from "../../../lib/mockStore";
+import { requireUserId } from "../../../lib/auth";
+import { listFailureLogs, listHistory } from "../../../lib/schedules";
 
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const userId = await requireUserId();
+  if (userId instanceof NextResponse) {
+    return userId;
   }
 
-  return NextResponse.json({ items: listHistory(), failures: listFailureLogs() });
+  return NextResponse.json({
+    items: await listHistory(userId),
+    failures: await listFailureLogs(userId)
+  });
 }

@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserPlatformConnection {
+  id                    String   @id @default(cuid())
+  userId                String
+  platform              String
+  status                String   @default("connected")
+  accountLabel          String?
+  remoteAccountId       String?
+  encryptedAccessToken  String?
+  encryptedRefreshToken String?
+  encryptedTokenSecret  String?
+  encryptedConfig       String?
+  scopes                String[]
+  accessTokenExpiresAt  DateTime?
+  lastValidatedAt       DateTime?
+  lastError             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
+
+model ScheduledPost {
+  id             String       @id @default(cuid())
+  userId         String
+  content        String
+  idempotencyKey String       @unique
+  scheduleAtUtc  DateTime
+  imageUrl       String?
+  imagePathname  String?
+  imageMimeType  String?
+  imageSizeBytes Int?
+  status         String       @default("queued")
+  selectedPlatforms String[]
+  variants       Json?
+  platformOptions Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  jobs           PublishJob[]
+
+  @@index([userId, createdAt])
+  @@index([status, scheduleAtUtc])
+}
+
+model PublishJob {
+  id             String        @id @default(cuid())
+  postId         String
+  platform       String
+  status         String        @default("queued")
+  scheduledAtUtc DateTime
+  idempotencyKey String        @unique
+  attempts       Int           @default(0)
+  maxAttempts    Int           @default(3)
+  lastError      String?
+  externalId     String?
+  externalUrl    String?
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  post           ScheduledPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  failureLogs    FailureLog[]
+
+  @@index([status, scheduledAtUtc])
+  @@index([postId])
+}
+
+model FailureLog {
+  id        String     @id @default(cuid())
+  jobId      String
+  platform  String
+  message   String
+  attempt   Int
+  createdAt DateTime   @default(now())
+  job       PublishJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+model OAuthState {
+  id          String   @id @default(cuid())
+  provider    String
+  userId      String
+  state       String   @unique
+  codeVerifier String?
+  redirectUri String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([provider, userId])
+  @@index([expiresAt])
+}
