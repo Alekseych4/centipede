@@ -85,6 +85,7 @@ export interface PlatformDefinition {
   supportsImage: boolean;
   supportsScheduling: boolean;
   accountLabel?: string;
+  lastError?: string;
   warnings: string[];
   constraints: string[];
 }

@@ -21,6 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav className="lp-nav" aria-label="Primary">
               <Link href="/">Home</Link>
               <Link href="/studio">Studio</Link>
+              <Link href="/settings">Settings</Link>
             </nav>
             <div className="lp-auth-actions">
               {!userId ? (

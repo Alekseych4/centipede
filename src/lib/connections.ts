@@ -187,7 +187,13 @@ export async function listPlatforms(userId: string): Promise<PlatformDefinition[
 
   return PLATFORM_DEFINITIONS.map((platform) => {
     const snapshot = snapshots[platform.key];
-    const warnings = snapshot.needsReconnect ? ["Reconnect required before scheduling."] : [];
+    const warnings = snapshot.needsReconnect
+      ? [
+          platform.key === "linkedin"
+            ? "LinkedIn connection expired or was rejected. Reconnect before scheduling."
+            : "Reconnect required before scheduling."
+        ]
+      : [];
 
     if (platform.key === "reddit") {
       warnings.push("Reddit publishes self-posts only and ignores the shared image in v1.");
@@ -199,6 +205,7 @@ export async function listPlatforms(userId: string): Promise<PlatformDefinition[
       needsReconnect: snapshot.needsReconnect,
       supportsScheduling: snapshot.status === "connected",
       accountLabel: snapshot.accountLabel,
+      lastError: snapshot.lastError,
       warnings,
       constraints: getStaticPlatform(platform.key).constraints
     };

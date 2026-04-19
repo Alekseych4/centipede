@@ -1,5 +1,5 @@
 import { Prisma, PublishJob as PrismaPublishJob, ScheduledPost as PrismaScheduledPost } from "@prisma/client";
-import { getConnection, listPlatforms } from "./connections";
+import { getConnection, listPlatforms, markConnectionReconnectRequired } from "./connections";
 import { prisma } from "./db";
 import {
   FailureLog,
@@ -351,6 +351,10 @@ export async function processDueJobs(now = new Date()): Promise<WorkerTickResult
     } else {
       const finalStatus = result.retryable === false || attempts >= job.maxAttempts ? "failed" : "queued";
       const message = result.error || "Unknown publish error.";
+
+      if (result.requiresReconnect) {
+        await markConnectionReconnectRequired(post.userId, job.platform as PlatformKey, message);
+      }
 
       await prisma.publishJob.update({
         where: { id: job.id },

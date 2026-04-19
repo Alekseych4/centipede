@@ -17,6 +17,7 @@ export interface AdapterPublishResult {
   externalUrl?: string;
   error?: string;
   retryable?: boolean;
+  requiresReconnect?: boolean;
 }
 
 export interface PlatformAdapter {
