@@ -57,11 +57,11 @@ export const linkedinAdapter: PlatformAdapter = {
   async publish(payload, _schedule, connection) {
     const accessToken = readAccessToken(connection);
     if (!accessToken) {
-      return { ok: false, error: "LinkedIn access token missing.", retryable: false };
+      return { ok: false, error: "LinkedIn access token missing.", retryable: false, requiresReconnect: true };
     }
 
     if (connection.accessTokenExpiresAt && connection.accessTokenExpiresAt < new Date()) {
-      return { ok: false, error: "LinkedIn connection expired; reconnect required.", retryable: false };
+      return { ok: false, error: "LinkedIn connection expired; reconnect required.", retryable: false, requiresReconnect: true };
     }
 
     const author = connection.remoteAccountId?.startsWith("urn:li:person:")
@@ -111,10 +111,12 @@ export const linkedinAdapter: PlatformAdapter = {
 
     if (!response.ok) {
       const data = await response.json().catch(() => null);
+      const authFailure = response.status === 401 || response.status === 403;
       return {
         ok: false,
         error: data?.message || "LinkedIn publish failed.",
-        retryable: response.status >= 500
+        retryable: authFailure ? false : response.status >= 500,
+        requiresReconnect: authFailure
       };
     }
 

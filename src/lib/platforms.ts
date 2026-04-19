@@ -58,6 +58,7 @@ export function getDefaultPlatformDefinitions(): PlatformDefinition[] {
     needsReconnect: false,
     supportsScheduling: false,
     accountLabel: undefined,
+    lastError: undefined,
     warnings: platform.key === "reddit" ? ["Reddit publishes self-posts only and ignores the shared image in v1."] : []
   }));
 }

@@ -10,9 +10,9 @@ export async function GET(request: Request, context: { params: Promise<{ platfor
 
   try {
     await completeOAuth(platform, request);
-    return NextResponse.redirect(new URL("/studio?connected=1", getBaseUrl(request.url)));
+    return NextResponse.redirect(new URL("/settings?connected=1", getBaseUrl(request.url)));
   } catch (error) {
-    const destination = new URL("/studio?connection_error=1", getBaseUrl(request.url));
+    const destination = new URL("/settings?connection_error=1", getBaseUrl(request.url));
     destination.searchParams.set("message", error instanceof Error ? error.message : "Connection failed.");
     return NextResponse.redirect(destination);
   }

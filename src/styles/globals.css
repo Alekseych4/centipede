@@ -103,6 +103,14 @@ body {
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
+.platform-card.static {
+  cursor: default;
+}
+
+.platform-card.disabled {
+  opacity: 0.78;
+}
+
 .platform-card.active {
   border-color: var(--brand);
   background: var(--brand-soft);
@@ -168,6 +176,7 @@ label {
   display: flex;
   gap: 0.6rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
 }
 
 button {
@@ -187,6 +196,28 @@ button {
 .secondary {
   background: #eef2e1;
   color: #2c3723;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 0.68rem 0.95rem;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.section-panel {
+  margin-top: 1rem;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .preview {
@@ -272,6 +303,10 @@ button {
   .hero-account-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .section-head {
+    flex-direction: column;
   }
 }
 
