@@ -87,6 +87,11 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
 
   useEffect(() => {
     loadInitial().catch(() => setError("Failed to load initial data."));
+    const interval = window.setInterval(() => {
+      loadInitial().catch(() => setError("Failed to refresh queue status."));
+    }, 30000);
+
+    return () => window.clearInterval(interval);
   }, []);
 
   const connectedPlatforms = useMemo(() => {

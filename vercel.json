@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/worker/tick",
+      "schedule": "* * * * *"
+    }
+  ],
   "git": {
     "deploymentEnabled": {
       "*": false,
