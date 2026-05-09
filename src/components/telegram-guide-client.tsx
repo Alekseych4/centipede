@@ -46,7 +46,7 @@ const steps: TelegramGuideStep[] = [
   {
     eyebrow: "Step 4",
     title: "Schedule a Telegram post",
-    description: "Return to Studio, select Telegram, and run the worker tick when the post is due.",
+    description: "Return to Studio, select Telegram, then send immediately or queue the post for its due time.",
     checklist: [
       "Telegram supports text posts and image captions.",
       "Image captions must stay within Telegram limits.",
