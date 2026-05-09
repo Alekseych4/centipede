@@ -8,6 +8,6 @@ export async function POST(request: Request) {
     return authResult;
   }
 
-  const result = await processDueJobs();
+  const result = await processDueJobs(new Date(), authResult.kind === "clerk" ? authResult.userId : undefined);
   return NextResponse.json({ result });
 }

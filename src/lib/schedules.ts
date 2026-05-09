@@ -16,6 +16,7 @@ import {
 import { getAdapter } from "../backend/publisher";
 
 const MAX_ATTEMPTS = 3;
+type PublishJobWithPost = PrismaPublishJob & { post: PrismaScheduledPost };
 
 function makeIdempotencyKey(payload: ScheduleRequest): string {
   const selected = [...payload.selectedPlatforms].sort().join(",");
@@ -185,6 +186,19 @@ function computePostStatus(jobs: PrismaPublishJob[]): ScheduledPostStatus {
   return "queued";
 }
 
+async function refreshPostStatus(postId: string): Promise<void> {
+  const refreshedJobs = await prisma.publishJob.findMany({
+    where: { postId }
+  });
+
+  await prisma.scheduledPost.update({
+    where: { id: postId },
+    data: {
+      status: computePostStatus(refreshedJobs)
+    }
+  });
+}
+
 export async function createSchedule(userId: string, payload: ScheduleRequest): Promise<ScheduledPost> {
   validateCommonPayload(payload);
   await validatePlatformSelections(userId, payload);
@@ -227,6 +241,20 @@ export async function createSchedule(userId: string, payload: ScheduleRequest): 
   return toScheduledPost(post);
 }
 
+export async function createAndSendSchedule(
+  userId: string,
+  payload: ScheduleRequest
+): Promise<{ item: ScheduledPost; result: WorkerTickResult }> {
+  const now = new Date();
+  const item = await createSchedule(userId, {
+    ...payload,
+    scheduleAtUtc: now.toISOString()
+  });
+  const result = await sendQueuedPostNow(userId, item.id, now);
+
+  return { item, result };
+}
+
 export async function listHistory(userId: string): Promise<HistoryResponseItem[]> {
   const posts = await prisma.scheduledPost.findMany({
     where: { userId },
@@ -267,23 +295,7 @@ export async function listFailureLogs(userId: string): Promise<FailureLog[]> {
   }));
 }
 
-export async function processDueJobs(now = new Date()): Promise<WorkerTickResult> {
-  const due = await prisma.publishJob.findMany({
-    where: {
-      status: "queued",
-      scheduledAtUtc: {
-        lte: now
-      }
-    },
-    include: {
-      post: true
-    },
-    orderBy: {
-      scheduledAtUtc: "asc"
-    },
-    take: 25
-  });
-
+async function processJobs(due: PublishJobWithPost[], userId?: string): Promise<WorkerTickResult> {
   let succeeded = 0;
   let failed = 0;
 
@@ -316,6 +328,7 @@ export async function processDueJobs(now = new Date()): Promise<WorkerTickResult
           attempt: job.attempts + 1
         }
       });
+      await refreshPostStatus(post.id);
       failed += 1;
       continue;
     }
@@ -375,16 +388,7 @@ export async function processDueJobs(now = new Date()): Promise<WorkerTickResult
       failed += 1;
     }
 
-    const refreshedJobs = await prisma.publishJob.findMany({
-      where: { postId: post.id }
-    });
-
-    await prisma.scheduledPost.update({
-      where: { id: post.id },
-      data: {
-        status: computePostStatus(refreshedJobs)
-      }
-    });
+    await refreshPostStatus(post.id);
   }
 
   return {
@@ -392,7 +396,95 @@ export async function processDueJobs(now = new Date()): Promise<WorkerTickResult
     succeeded,
     failed,
     remainingQueued: await prisma.publishJob.count({
-      where: { status: "queued" }
+      where: {
+        status: "queued",
+        ...(userId
+          ? {
+              post: {
+                userId
+              }
+            }
+          : {})
+      }
     })
   };
+}
+
+export async function processDueJobs(now = new Date(), userId?: string): Promise<WorkerTickResult> {
+  const due = await prisma.publishJob.findMany({
+    where: {
+      status: "queued",
+      scheduledAtUtc: {
+        lte: now
+      },
+      ...(userId
+        ? {
+            post: {
+              userId
+            }
+          }
+        : {})
+    },
+    include: {
+      post: true
+    },
+    orderBy: {
+      scheduledAtUtc: "asc"
+    },
+    take: 25
+  });
+
+  return processJobs(due, userId);
+}
+
+export async function sendQueuedPostNow(
+  userId: string,
+  postId: string,
+  now = new Date()
+): Promise<WorkerTickResult> {
+  const post = await prisma.scheduledPost.findFirst({
+    where: {
+      id: postId,
+      userId
+    }
+  });
+
+  if (!post) {
+    throw new Error("Scheduled post not found.");
+  }
+
+  await prisma.scheduledPost.update({
+    where: { id: postId },
+    data: {
+      scheduleAtUtc: now
+    }
+  });
+
+  await prisma.publishJob.updateMany({
+    where: {
+      postId,
+      status: "queued"
+    },
+    data: {
+      scheduledAtUtc: now
+    }
+  });
+
+  const due = await prisma.publishJob.findMany({
+    where: {
+      postId,
+      status: "queued",
+      scheduledAtUtc: {
+        lte: now
+      }
+    },
+    include: {
+      post: true
+    },
+    orderBy: {
+      createdAt: "asc"
+    }
+  });
+
+  return processJobs(due, userId);
 }
