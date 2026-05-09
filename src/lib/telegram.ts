@@ -40,6 +40,25 @@ export interface TelegramPublishFailure {
   requiresReconnect: boolean;
 }
 
+export function normalizeTelegramChatTarget(input: string): string {
+  const value = input.trim();
+  if (!value) {
+    return "";
+  }
+
+  const withoutQuery = value.split(/[?#]/)[0];
+  const linkMatch = withoutQuery.match(/^(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me)\/([A-Za-z0-9_]+)\/?$/i);
+  if (linkMatch?.[1]) {
+    return `@${linkMatch[1]}`;
+  }
+
+  if (/^[A-Za-z0-9_]{5,32}$/.test(value)) {
+    return `@${value}`;
+  }
+
+  return value;
+}
+
 function getTelegramUrl(botToken: string, method: string): string {
   return `https://api.telegram.org/bot${botToken}/${method}`;
 }
@@ -111,13 +130,17 @@ export async function validateTelegramConnection(
   botToken: string,
   chatId: string
 ): Promise<TelegramConnectionValidation> {
+  const normalizedChatId = normalizeTelegramChatTarget(chatId);
   const meResult = await callTelegram<TelegramUser>(botToken, "getMe");
   if (!meResult.response.ok || !meResult.data?.ok || !meResult.data.result?.id) {
     throw new Error("Invalid Telegram bot token.");
   }
 
   const bot = meResult.data.result;
-  const chatResult = await callTelegram<TelegramChat>(botToken, `getChat?chat_id=${encodeURIComponent(chatId)}`);
+  const chatResult = await callTelegram<TelegramChat>(
+    botToken,
+    `getChat?chat_id=${encodeURIComponent(normalizedChatId)}`
+  );
   if (!chatResult.response.ok || !chatResult.data?.ok || !chatResult.data.result?.id) {
     throw new Error("Telegram bot cannot access the specified chat.");
   }
@@ -134,8 +157,8 @@ export async function validateTelegramConnection(
   return {
     botId: bot.id,
     botUsername: bot.username,
-    chatId,
-    accountLabel: getChatLabel(chat, chatId)
+    chatId: normalizedChatId,
+    accountLabel: getChatLabel(chat, normalizedChatId)
   };
 }
 

@@ -27,7 +27,7 @@ export async function POST(request: Request, context: { params: Promise<{ platfo
     const validation = await validateTelegramConnection(botToken, chatId);
     await saveTelegramConnection(userId, {
       botToken,
-      chatId
+      chatId: validation.chatId
     }, validation.accountLabel);
 
     return NextResponse.json({ ok: true });
