@@ -188,6 +188,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .primary {
   background: var(--brand);
   color: #fff;
@@ -290,6 +295,100 @@ button {
   color: var(--muted);
 }
 
+.telegram-guide {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1.5rem;
+  align-items: stretch;
+}
+
+.telegram-guide-rail {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.telegram-guide-dot {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+}
+
+.telegram-guide-dot span {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e8f6ff;
+  color: #126c96;
+  font-weight: 800;
+}
+
+.telegram-guide-dot.active {
+  border-color: #72b9d7;
+  background: #f2fbff;
+}
+
+.telegram-guide-card {
+  min-height: 390px;
+  display: flex;
+  flex-direction: column;
+}
+
+.telegram-guide-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.telegram-guide-eyebrow {
+  margin: 0;
+  color: #126c96;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.telegram-guide-card h2 {
+  margin-top: 1.6rem;
+  font-size: clamp(1.5rem, 3vw, 2.3rem);
+}
+
+.telegram-guide-checklist {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.telegram-guide-checklist li {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: #fbfcf6;
+}
+
+.telegram-guide-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
 .hidden-input {
   display: none;
 }
@@ -322,6 +421,24 @@ button {
 
   .section-head {
     flex-direction: column;
+  }
+
+  .telegram-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .telegram-guide-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .telegram-guide-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .telegram-guide-card {
+    min-height: auto;
   }
 }
 

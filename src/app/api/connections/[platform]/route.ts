@@ -2,23 +2,8 @@ import { NextResponse } from "next/server";
 import { requireUserId } from "../../../../lib/auth";
 import { disconnectPlatform, saveTelegramConnection } from "../../../../lib/connections";
 import { isPlatformKey } from "../../../../lib/platforms";
+import { validateTelegramConnection } from "../../../../lib/telegram";
 import { TelegramConnectionRequest } from "../../../../lib/types";
-
-async function validateTelegramConnection(botToken: string, chatId: string) {
-  const meResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
-  const meData = await meResponse.json().catch(() => null);
-  if (!meResponse.ok || !meData?.ok) {
-    throw new Error("Invalid Telegram bot token.");
-  }
-
-  const chatResponse = await fetch(
-    `https://api.telegram.org/bot${botToken}/getChat?chat_id=${encodeURIComponent(chatId)}`
-  );
-  const chatData = await chatResponse.json().catch(() => null);
-  if (!chatResponse.ok || !chatData?.ok) {
-    throw new Error("Telegram bot cannot access the specified chat.");
-  }
-}
 
 export async function POST(request: Request, context: { params: Promise<{ platform: string }> }) {
   const userId = await requireUserId();
@@ -37,11 +22,13 @@ export async function POST(request: Request, context: { params: Promise<{ platfo
       return NextResponse.json({ error: "botToken and chatId are required." }, { status: 400 });
     }
 
-    await validateTelegramConnection(payload.botToken.trim(), payload.chatId.trim());
+    const botToken = payload.botToken.trim();
+    const chatId = payload.chatId.trim();
+    const validation = await validateTelegramConnection(botToken, chatId);
     await saveTelegramConnection(userId, {
-      botToken: payload.botToken.trim(),
-      chatId: payload.chatId.trim()
-    });
+      botToken,
+      chatId
+    }, validation.accountLabel);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
