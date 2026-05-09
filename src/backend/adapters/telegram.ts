@@ -1,5 +1,6 @@
 import { PlatformAdapter } from "./base";
 import { requireTelegramConfig } from "../../lib/connections";
+import { classifyTelegramPublishFailure } from "../../lib/telegram";
 
 export const telegramAdapter: PlatformAdapter = {
   key: "telegram",
@@ -32,10 +33,12 @@ export const telegramAdapter: PlatformAdapter = {
       | null;
 
     if (!response.ok || !data?.ok) {
+      const failure = classifyTelegramPublishFailure(response, data);
       return {
         ok: false,
-        error: data?.description || "Telegram publish failed.",
-        retryable: response.status >= 500
+        error: failure.message,
+        retryable: failure.retryable,
+        requiresReconnect: failure.requiresReconnect
       };
     }
 

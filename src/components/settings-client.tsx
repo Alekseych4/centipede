@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PlatformDefinition, PlatformKey, TelegramConnectionRequest } from "../lib/types";
@@ -54,6 +55,10 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
 
   const connectedPlatforms = useMemo(() => {
     return platforms.filter((item) => item.connected);
+  }, [platforms]);
+
+  const telegramPlatform = useMemo(() => {
+    return platforms.find((item) => item.key === "telegram");
   }, [platforms]);
 
   const startupConfigErrors = useMemo(() => {
@@ -207,11 +212,21 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
         <aside className="grid">
           <section className="panel">
             <h2>Telegram Setup</h2>
-            <p className="meta">Telegram uses a bot token plus one default chat or channel destination for each user.</p>
+            <p className="meta">
+              Telegram uses a BotFather token plus one default chat, group, or channel destination for each user.
+            </p>
+            <div className="actions">
+              <Link className="button-link secondary" href="/settings/telegram-guide">
+                Setup Guide
+              </Link>
+            </div>
+            {telegramPlatform?.connected ? (
+              <p className="meta">Connected destination: {telegramPlatform.accountLabel || "Telegram"}</p>
+            ) : null}
 
             <div className="grid">
               <div>
-                <label htmlFor="telegramToken">Telegram bot token</label>
+                <label htmlFor="telegramToken">BotFather bot token</label>
                 <input
                   id="telegramToken"
                   value={telegramConfig.botToken}
@@ -220,12 +235,12 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
                 />
               </div>
               <div>
-                <label htmlFor="telegramChatId">Telegram chat id or channel username</label>
+                <label htmlFor="telegramChatId">Chat, group, or channel target</label>
                 <input
                   id="telegramChatId"
                   value={telegramConfig.chatId}
                   onChange={(event) => setTelegramConfig((current) => ({ ...current, chatId: event.target.value }))}
-                  placeholder="@channel_or_-100123"
+                  placeholder="@channel_username or -100123"
                 />
               </div>
             </div>
@@ -234,12 +249,17 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
               <button
                 className="secondary"
                 type="button"
-                disabled={connectLoading || Boolean(platforms.find((item) => item.key === "telegram")?.configError)}
+                disabled={
+                  connectLoading ||
+                  Boolean(telegramPlatform?.configError) ||
+                  !telegramConfig.botToken.trim() ||
+                  !telegramConfig.chatId.trim()
+                }
                 onClick={() => void connectTelegram()}
               >
-                {connectLoading ? "Saving..." : "Save Telegram Connection"}
+                {connectLoading ? "Validating..." : "Save Telegram Connection"}
               </button>
-              {platforms.find((item) => item.key === "telegram")?.connected ? (
+              {telegramPlatform?.connected ? (
                 <button className="secondary" type="button" disabled={connectLoading} onClick={() => void disconnect("telegram")}>
                   Disconnect Telegram
                 </button>

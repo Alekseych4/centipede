@@ -87,7 +87,11 @@ export async function disconnectPlatform(userId: string, platform: PlatformKey):
   });
 }
 
-export async function saveTelegramConnection(userId: string, payload: TelegramConfig): Promise<void> {
+export async function saveTelegramConnection(
+  userId: string,
+  payload: TelegramConfig,
+  accountLabel = payload.chatId
+): Promise<void> {
   await prisma.userPlatformConnection.upsert({
     where: {
       userId_platform: {
@@ -99,13 +103,15 @@ export async function saveTelegramConnection(userId: string, payload: TelegramCo
       userId,
       platform: "telegram",
       status: "connected",
-      accountLabel: payload.chatId,
+      accountLabel,
       encryptedConfig: encryptJson(payload),
-      scopes: []
+      scopes: [],
+      lastValidatedAt: new Date(),
+      lastError: null
     },
     update: {
       status: "connected",
-      accountLabel: payload.chatId,
+      accountLabel,
       encryptedConfig: encryptJson(payload),
       lastError: null,
       lastValidatedAt: new Date()
