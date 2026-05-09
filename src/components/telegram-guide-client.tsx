@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { TelegramConnectionRequest } from "../lib/types";
 
 interface TelegramGuideStep {
   eyebrow: string;
@@ -54,7 +56,14 @@ const steps: TelegramGuideStep[] = [
 ];
 
 export function TelegramGuideClient() {
+  const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [telegramConfig, setTelegramConfig] = useState<TelegramConnectionRequest>({
+    botToken: "",
+    chatId: ""
+  });
   const current = steps[activeStep];
   const progressLabel = `${activeStep + 1} of ${steps.length}`;
 
@@ -63,7 +72,33 @@ export function TelegramGuideClient() {
   };
 
   const goNext = () => {
+    setError("");
     setActiveStep((value) => Math.min(steps.length - 1, value + 1));
+  };
+
+  const saveTelegramConnection = async () => {
+    setConnectLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/connections/telegram", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(telegramConfig)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save Telegram connection.");
+      }
+
+      router.push("/settings?connected=1");
+    } catch (connectError) {
+      setError(connectError instanceof Error ? connectError.message : "Unknown error.");
+    } finally {
+      setConnectLoading(false);
+    }
   };
 
   return (
@@ -108,14 +143,43 @@ export function TelegramGuideClient() {
             ))}
           </ul>
 
+          {activeStep === steps.length - 1 ? (
+            <div className="telegram-guide-form">
+              <div>
+                <label htmlFor="telegramToken">BotFather bot token</label>
+                <input
+                  id="telegramToken"
+                  value={telegramConfig.botToken}
+                  onChange={(event) => setTelegramConfig((value) => ({ ...value, botToken: event.target.value }))}
+                  placeholder="123456:ABCDEF..."
+                />
+              </div>
+              <div>
+                <label htmlFor="telegramChatId">Chat, group, or channel target</label>
+                <input
+                  id="telegramChatId"
+                  value={telegramConfig.chatId}
+                  onChange={(event) => setTelegramConfig((value) => ({ ...value, chatId: event.target.value }))}
+                  placeholder="@channel_username or -100123"
+                />
+              </div>
+              {error ? <p className="error">{error}</p> : null}
+            </div>
+          ) : null}
+
           <div className="telegram-guide-actions">
             <button className="secondary" type="button" onClick={goPrevious} disabled={activeStep === 0}>
               Previous
             </button>
             {activeStep === steps.length - 1 ? (
-              <Link className="button-link primary" href="/settings">
-                Open Telegram Setup
-              </Link>
+              <button
+                className="primary"
+                type="button"
+                disabled={connectLoading || !telegramConfig.botToken.trim() || !telegramConfig.chatId.trim()}
+                onClick={() => void saveTelegramConnection()}
+              >
+                {connectLoading ? "Validating..." : "Connect Telegram"}
+              </button>
             ) : (
               <button className="primary" type="button" onClick={goNext}>
                 Next

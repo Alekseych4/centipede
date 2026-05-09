@@ -214,6 +214,11 @@ button:disabled {
   text-decoration: none;
 }
 
+.button-link.disabled {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
 .section-panel {
   margin-top: 1rem;
 }
@@ -378,6 +383,13 @@ button:disabled {
   border-radius: 10px;
   padding: 0.8rem;
   background: #fbfcf6;
+}
+
+.telegram-guide-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.4rem;
+  max-width: 560px;
 }
 
 .telegram-guide-actions {
