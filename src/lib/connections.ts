@@ -1,6 +1,7 @@
 import { UserPlatformConnection } from "@prisma/client";
 import { prisma } from "./db";
 import { decryptJson, decryptValue, encryptJson, encryptValue } from "./crypto";
+import { optionalEnv } from "./env";
 import { getStaticPlatform, PLATFORM_DEFINITIONS } from "./platforms";
 import { ConnectionStatus, PlatformConnectionSnapshot, PlatformDefinition, PlatformKey } from "./types";
 
@@ -12,6 +13,13 @@ interface TelegramConfig {
 interface XConfig {
   codeVerifier?: string;
 }
+
+const REQUIRED_PLATFORM_ENV: Record<PlatformKey, string[]> = {
+  telegram: ["CONNECTION_ENCRYPTION_KEY"],
+  x: ["X_CLIENT_ID", "CONNECTION_ENCRYPTION_KEY"],
+  reddit: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET", "CONNECTION_ENCRYPTION_KEY"],
+  linkedin: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "CONNECTION_ENCRYPTION_KEY"]
+};
 
 export interface PlatformCredentials {
   accessToken?: string;
@@ -30,6 +38,17 @@ function toConnectionStatus(record?: UserPlatformConnection | null): ConnectionS
   }
 
   return "connected";
+}
+
+function getPlatformConfigError(platform: PlatformKey): string | undefined {
+  const missing = REQUIRED_PLATFORM_ENV[platform].filter((name) => !optionalEnv(name));
+  if (missing.length === 0) {
+    return undefined;
+  }
+
+  const label = getStaticPlatform(platform).label;
+  const variables = missing.join(", ");
+  return `${label} is not ready to connect. Missing environment ${missing.length === 1 ? "variable" : "variables"}: ${variables}.`;
 }
 
 export function readConnectionConfig<T>(record?: UserPlatformConnection | null): T | undefined {
@@ -203,6 +222,7 @@ export async function listPlatforms(userId: string): Promise<PlatformDefinition[
       ...platform,
       connected: snapshot.status === "connected",
       needsReconnect: snapshot.needsReconnect,
+      configError: getPlatformConfigError(platform.key),
       supportsScheduling: snapshot.status === "connected",
       accountLabel: snapshot.accountLabel,
       lastError: snapshot.lastError,
