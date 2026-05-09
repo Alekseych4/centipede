@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Prisma, PublishJob as PrismaPublishJob, ScheduledPost as PrismaScheduledPost } from "@prisma/client";
 import { getConnection, listPlatforms, markConnectionReconnectRequired } from "./connections";
 import { prisma } from "./db";
@@ -13,10 +14,20 @@ import {
   ScheduledPostStatus,
   WorkerTickResult
 } from "./types";
+import type { AdapterPublishResult } from "../backend/adapters/base";
 import { getAdapter } from "../backend/publisher";
 
 const MAX_ATTEMPTS = 3;
+const DEFAULT_WORKER_BATCH_SIZE = 25;
+const DEFAULT_STALE_LOCK_MS = 15 * 60 * 1000;
 type PublishJobWithPost = PrismaPublishJob & { post: PrismaScheduledPost };
+
+interface ProcessDueJobsOptions {
+  batchSize?: number;
+  postId?: string;
+  staleLockMs?: number;
+  workerId?: string;
+}
 
 function makeIdempotencyKey(payload: ScheduleRequest): string {
   const selected = [...payload.selectedPlatforms].sort().join(",");
@@ -303,13 +314,6 @@ async function processJobs(due: PublishJobWithPost[], userId?: string): Promise<
     const post = toScheduledPost(job.post);
     const connection = await getConnection(post.userId, job.platform as PlatformKey);
 
-    await prisma.publishJob.update({
-      where: { id: job.id },
-      data: {
-        status: "processing"
-      }
-    });
-
     if (!connection || connection.status !== "connected") {
       const error = "Platform connection is missing or requires reconnection.";
       await prisma.publishJob.update({
@@ -317,7 +321,9 @@ async function processJobs(due: PublishJobWithPost[], userId?: string): Promise<
         data: {
           status: "failed",
           attempts: { increment: 1 },
-          lastError: error
+          lastError: error,
+          lockedBy: null,
+          lockedAt: null
         }
       });
       await prisma.failureLog.create({
@@ -334,17 +340,27 @@ async function processJobs(due: PublishJobWithPost[], userId?: string): Promise<
     }
 
     const adapter = getAdapter(job.platform as PlatformKey);
-    const result = await adapter.publish(
-      {
-        postId: post.id,
-        platform: job.platform as PlatformKey,
-        content: getPayloadForPlatform(post, job.platform as PlatformKey),
-        image: post.image,
-        platformOptions: post.platformOptions
-      },
-      post,
-      connection
-    );
+    let result: AdapterPublishResult;
+
+    try {
+      result = await adapter.publish(
+        {
+          postId: post.id,
+          platform: job.platform as PlatformKey,
+          content: getPayloadForPlatform(post, job.platform as PlatformKey),
+          image: post.image,
+          platformOptions: post.platformOptions
+        },
+        post,
+        connection
+      );
+    } catch (error) {
+      result = {
+        ok: false,
+        error: error instanceof Error ? error.message : "Publish failed.",
+        retryable: true
+      };
+    }
 
     const attempts = job.attempts + 1;
 
@@ -357,7 +373,9 @@ async function processJobs(due: PublishJobWithPost[], userId?: string): Promise<
           lastError: null,
           publishedAt: new Date(),
           externalId: result.externalId,
-          externalUrl: result.externalUrl
+          externalUrl: result.externalUrl,
+          lockedBy: null,
+          lockedAt: null
         }
       });
       succeeded += 1;
@@ -374,7 +392,9 @@ async function processJobs(due: PublishJobWithPost[], userId?: string): Promise<
         data: {
           status: finalStatus,
           attempts,
-          lastError: message
+          lastError: message,
+          lockedBy: null,
+          lockedAt: null
         }
       });
       await prisma.failureLog.create({
@@ -410,13 +430,17 @@ async function processJobs(due: PublishJobWithPost[], userId?: string): Promise<
   };
 }
 
-export async function processDueJobs(now = new Date(), userId?: string): Promise<WorkerTickResult> {
-  const due = await prisma.publishJob.findMany({
+async function recoverStaleProcessingJobs(now: Date, userId: string | undefined, options: ProcessDueJobsOptions): Promise<void> {
+  const staleLockMs = options.staleLockMs ?? DEFAULT_STALE_LOCK_MS;
+  const staleBefore = new Date(now.valueOf() - staleLockMs);
+
+  await prisma.publishJob.updateMany({
     where: {
-      status: "queued",
-      scheduledAtUtc: {
-        lte: now
+      status: "processing",
+      lockedAt: {
+        lt: staleBefore
       },
+      ...(options.postId ? { postId: options.postId } : {}),
       ...(userId
         ? {
             post: {
@@ -425,14 +449,68 @@ export async function processDueJobs(now = new Date(), userId?: string): Promise
           }
         : {})
     },
+    data: {
+      status: "queued",
+      lockedBy: null,
+      lockedAt: null
+    }
+  });
+}
+
+async function claimDueJobs(now: Date, userId: string | undefined, options: ProcessDueJobsOptions): Promise<PublishJobWithPost[]> {
+  const workerId = options.workerId || `worker-${randomUUID()}`;
+  const batchSize = options.batchSize ?? DEFAULT_WORKER_BATCH_SIZE;
+  const userFilter = userId ? Prisma.sql`AND p."userId" = ${userId}` : Prisma.empty;
+  const postFilter = options.postId ? Prisma.sql`AND due."postId" = ${options.postId}` : Prisma.empty;
+
+  const claimed = await prisma.$queryRaw<{ id: string }[]>`
+    UPDATE "PublishJob" AS j
+    SET
+      "status" = 'processing',
+      "lockedBy" = ${workerId},
+      "lockedAt" = NOW(),
+      "updatedAt" = NOW()
+    WHERE j."id" IN (
+      SELECT due."id"
+      FROM "PublishJob" AS due
+      INNER JOIN "ScheduledPost" AS p ON p."id" = due."postId"
+      WHERE due."status" = 'queued'
+        AND due."scheduledAtUtc" <= ${now}
+        ${userFilter}
+        ${postFilter}
+      ORDER BY due."scheduledAtUtc" ASC
+      LIMIT ${batchSize}
+      FOR UPDATE OF due SKIP LOCKED
+    )
+    RETURNING j."id"
+  `;
+
+  if (claimed.length === 0) {
+    return [];
+  }
+
+  return prisma.publishJob.findMany({
+    where: {
+      id: {
+        in: claimed.map((job) => job.id)
+      }
+    },
     include: {
       post: true
     },
     orderBy: {
       scheduledAtUtc: "asc"
-    },
-    take: 25
+    }
   });
+}
+
+export async function processDueJobs(
+  now = new Date(),
+  userId?: string,
+  options: ProcessDueJobsOptions = {}
+): Promise<WorkerTickResult> {
+  await recoverStaleProcessingJobs(now, userId, options);
+  const due = await claimDueJobs(now, userId, options);
 
   return processJobs(due, userId);
 }
@@ -470,21 +548,9 @@ export async function sendQueuedPostNow(
     }
   });
 
-  const due = await prisma.publishJob.findMany({
-    where: {
-      postId,
-      status: "queued",
-      scheduledAtUtc: {
-        lte: now
-      }
-    },
-    include: {
-      post: true
-    },
-    orderBy: {
-      createdAt: "asc"
-    }
+  return processDueJobs(now, userId, {
+    postId,
+    batchSize: 100,
+    workerId: `send-now-${randomUUID()}`
   });
-
-  return processJobs(due, userId);
 }

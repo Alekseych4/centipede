@@ -64,12 +64,15 @@ model PublishJob {
   externalId     String?
   externalUrl    String?
   publishedAt    DateTime?
+  lockedBy       String?
+  lockedAt       DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   post           ScheduledPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   failureLogs    FailureLog[]
 
   @@index([status, scheduledAtUtc])
+  @@index([status, lockedAt])
   @@index([postId])
 }
 

@@ -1,0 +1,10 @@
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: centipede-worker:latest
+    restart: unless-stopped
+    env_file:
+      - .env.worker
+    command: sh -c "npx prisma migrate deploy && npm run worker"
