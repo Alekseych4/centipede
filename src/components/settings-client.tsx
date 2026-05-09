@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { PlatformDefinition, PlatformKey, TelegramConnectionRequest } from "../lib/types";
+import { PlatformDefinition, PlatformKey } from "../lib/types";
 import { getDefaultPlatformDefinitions } from "../lib/platforms";
 
 interface SettingsClientProps {
@@ -17,10 +17,6 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
   const [connectLoading, setConnectLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [telegramConfig, setTelegramConfig] = useState<TelegramConnectionRequest>({
-    botToken: "",
-    chatId: ""
-  });
 
   async function loadPlatforms() {
     const response = await fetch("/api/platforms");
@@ -57,10 +53,6 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
     return platforms.filter((item) => item.connected);
   }, [platforms]);
 
-  const telegramPlatform = useMemo(() => {
-    return platforms.find((item) => item.key === "telegram");
-  }, [platforms]);
-
   const startupConfigErrors = useMemo(() => {
     return platforms.flatMap((platform) => (platform.configError ? [platform.configError] : []));
   }, [platforms]);
@@ -79,34 +71,6 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
     }
 
     return "not connected";
-  };
-
-  const connectTelegram = async () => {
-    setConnectLoading(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const response = await fetch("/api/connections/telegram", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(telegramConfig)
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to save Telegram connection.");
-      }
-
-      setTelegramConfig({ botToken: "", chatId: "" });
-      await loadPlatforms();
-      setMessage("Telegram connection saved.");
-    } catch (connectError) {
-      setError(connectError instanceof Error ? connectError.message : "Unknown error.");
-    } finally {
-      setConnectLoading(false);
-    }
   };
 
   const startOAuthConnection = (platform: PlatformKey) => {
@@ -186,7 +150,19 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
                   {platform.lastError ? <li>{platform.lastError}</li> : null}
                 </ul>
                 <div className="actions">
-                  {platform.key === "telegram" ? null : !platform.connected ? (
+                  {platform.key === "telegram" && !platform.connected ? (
+                    <Link
+                      className={`button-link secondary ${platform.configError ? "disabled" : ""}`}
+                      href={platform.configError ? "#" : "/settings/telegram-guide"}
+                      aria-disabled={Boolean(platform.configError)}
+                    >
+                      Connect
+                    </Link>
+                  ) : platform.key === "telegram" ? (
+                    <button className="secondary" type="button" disabled={connectLoading} onClick={() => void disconnect(platform.key)}>
+                      Disconnect
+                    </button>
+                  ) : !platform.connected ? (
                     <button
                       className="secondary"
                       type="button"
@@ -211,65 +187,9 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
 
         <aside className="grid">
           <section className="panel">
-            <h2>Telegram Setup</h2>
-            <p className="meta">
-              Telegram uses a BotFather token plus one default chat, group, or channel destination for each user.
-            </p>
-            <div className="actions">
-              <Link className="button-link secondary" href="/settings/telegram-guide">
-                Setup Guide
-              </Link>
-            </div>
-            {telegramPlatform?.connected ? (
-              <p className="meta">Connected destination: {telegramPlatform.accountLabel || "Telegram"}</p>
-            ) : null}
-
-            <div className="grid">
-              <div>
-                <label htmlFor="telegramToken">BotFather bot token</label>
-                <input
-                  id="telegramToken"
-                  value={telegramConfig.botToken}
-                  onChange={(event) => setTelegramConfig((current) => ({ ...current, botToken: event.target.value }))}
-                  placeholder="123456:ABCDEF..."
-                />
-              </div>
-              <div>
-                <label htmlFor="telegramChatId">Chat, group, or channel target</label>
-                <input
-                  id="telegramChatId"
-                  value={telegramConfig.chatId}
-                  onChange={(event) => setTelegramConfig((current) => ({ ...current, chatId: event.target.value }))}
-                  placeholder="@channel_username or -100123"
-                />
-              </div>
-            </div>
-
-            <div className="actions">
-              <button
-                className="secondary"
-                type="button"
-                disabled={
-                  connectLoading ||
-                  Boolean(telegramPlatform?.configError) ||
-                  !telegramConfig.botToken.trim() ||
-                  !telegramConfig.chatId.trim()
-                }
-                onClick={() => void connectTelegram()}
-              >
-                {connectLoading ? "Validating..." : "Save Telegram Connection"}
-              </button>
-              {telegramPlatform?.connected ? (
-                <button className="secondary" type="button" disabled={connectLoading} onClick={() => void disconnect("telegram")}>
-                  Disconnect Telegram
-                </button>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="panel">
             <h2>OAuth Platforms</h2>
             <ul className="meta-list">
+              <li>Telegram uses a guided bot setup flow from Account Connections.</li>
               <li>X uses OAuth and redirects back here after consent.</li>
               <li>Reddit uses OAuth and needs subreddit plus title later at schedule time.</li>
               <li>LinkedIn uses member-profile OAuth and may require reconnect after token expiry.</li>
