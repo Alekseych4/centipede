@@ -131,7 +131,6 @@ export default function LandingPage() {
             </article>
           ))}
         </div>
-        <p className="lp-note">Note: adapters are mocked and the data store is process-memory only.</p>
       </section>
 
       <section className="lp-section">
