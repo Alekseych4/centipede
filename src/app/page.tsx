@@ -15,7 +15,7 @@ const featureItems = [
     description: "Write base content once, then override per platform when tone or length needs to differ."
   },
   {
-    title: "Queue + Worker Tick Model",
+    title: "Queue Processing Model",
     description: "Schedule in UTC and process posts through a deterministic queue worker for clear publish state."
   },
   {
@@ -29,8 +29,8 @@ const pricingItems = [
     tier: "Starter",
     price: "$0",
     cadence: "/month",
-    description: "Local MVP evaluation for solo testing.",
-    points: ["Manual worker tick", "4 platform adapters", "In-memory data store"]
+    description: "Local evaluation for solo testing.",
+    points: ["Manual queue controls", "4 platform adapters", "In-memory data store"]
   },
   {
     tier: "Builder",
@@ -87,7 +87,7 @@ export default function LandingPage() {
         <p className="lp-kicker">Cross-post scheduling, focused on execution</p>
         <h1>Plan once, adapt per platform, and process reliably.</h1>
         <p className="lp-subtitle">
-          Centipede is a Next.js MVP for scheduling posts across Telegram, X, Reddit, and LinkedIn with queue-based
+          Centipede is a Next.js app for scheduling posts across Telegram, X, Reddit, and LinkedIn with queue-based
           processing and platform-specific variants.
         </p>
         <div className="lp-actions">
@@ -103,7 +103,7 @@ export default function LandingPage() {
       <section className="lp-section">
         <div className="lp-section-head">
           <h2>Featured Platforms</h2>
-          <p>Built around the channels this MVP currently simulates.</p>
+          <p>Built around the channels Centipede currently supports.</p>
         </div>
         <div className="lp-platform-grid">
           {platformItems.map((platform) => (
@@ -120,7 +120,7 @@ export default function LandingPage() {
 
       <section className="lp-section lp-section-alt">
         <div className="lp-section-head">
-          <h2>Current MVP Functionality</h2>
+          <h2>Current Functionality</h2>
           <p>What the project supports now, without external API integrations.</p>
         </div>
         <div className="lp-feature-grid">

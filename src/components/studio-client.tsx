@@ -326,7 +326,7 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
             {userEmail ? ` (${userEmail})` : ""}
           </p>
         </div>
-        <h1>Social Scheduler MVP</h1>
+        <h1>Social Scheduler</h1>
         <p>Compose once, send immediately, or queue a scheduled post with visible platform status.</p>
       </section>
 
