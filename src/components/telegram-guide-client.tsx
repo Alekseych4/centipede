@@ -30,13 +30,13 @@ const steps: TelegramGuideStep[] = [
     checklist: [
       "For channels, add the bot as an administrator.",
       "Allow posting messages in the destination.",
-      "Use a public @channel username or a numeric chat id."
+      "Use a public t.me link, @channel username, or numeric chat id."
     ]
   },
   {
     eyebrow: "Step 3",
     title: "Connect Centipede",
-    description: "Paste the BotFather token and destination into Settings, then Centipede validates access without posting.",
+    description: "Paste the BotFather token and destination link, username, or id. Centipede validates access without posting.",
     checklist: [
       "The token is stored encrypted.",
       "Centipede checks bot identity and destination access.",
@@ -155,12 +155,12 @@ export function TelegramGuideClient() {
                 />
               </div>
               <div>
-                <label htmlFor="telegramChatId">Chat, group, or channel target</label>
+                <label htmlFor="telegramChatId">Chat, group, or channel link/target</label>
                 <input
                   id="telegramChatId"
                   value={telegramConfig.chatId}
                   onChange={(event) => setTelegramConfig((value) => ({ ...value, chatId: event.target.value }))}
-                  placeholder="@channel_username or -100123"
+                  placeholder="https://t.me/channel_name, @channel_name, or -100123"
                 />
               </div>
               {error ? <p className="error">{error}</p> : null}
