@@ -243,6 +243,13 @@ button:disabled {
   margin-top: 0.7rem;
 }
 
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
 .history-item h4 {
   margin: 0;
   font-size: 0.98rem;
@@ -252,6 +259,71 @@ button:disabled {
   margin: 0.3rem 0 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.status-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.45rem;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.status-queued {
+  background: #fff8dc;
+  border-color: #e1c35a;
+  color: #6b560d;
+}
+
+.status-processing {
+  background: #eaf3ff;
+  border-color: #9fc7f0;
+  color: #225c93;
+}
+
+.status-published {
+  background: #e5f4ec;
+  border-color: #9ed0b8;
+  color: #1c5f45;
+}
+
+.status-partially_published {
+  background: #fff0e1;
+  border-color: #d49b5e;
+  color: #7b4d18;
+}
+
+.status-failed {
+  background: #fff0f0;
+  border-color: #e5b9b9;
+  color: #7a2f2f;
+}
+
+.job-list {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.job-row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #edf0e4;
+  border-radius: 8px;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.compact-actions {
+  margin-top: 0.7rem;
 }
 
 .error {

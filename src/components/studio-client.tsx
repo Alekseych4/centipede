@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { ChangeEvent, ClipboardEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FailureLog, HistoryResponseItem, MediaAsset, PlatformDefinition, PlatformKey, ScheduleRequest } from "../lib/types";
+import {
+  FailureLog,
+  HistoryResponseItem,
+  MediaAsset,
+  PlatformDefinition,
+  PlatformKey,
+  QueueJobStatus,
+  ScheduleRequest,
+  ScheduledPostStatus
+} from "../lib/types";
 import { getDefaultPlatformDefinitions } from "../lib/platforms";
 
 function localDateTimeValue(date = new Date()) {
@@ -36,10 +45,11 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
   const [history, setHistory] = useState<HistoryResponseItem[]>([]);
   const [failures, setFailures] = useState<FailureLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [workerLoading, setWorkerLoading] = useState(false);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [sendingPostId, setSendingPostId] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
-  const [workerMessage, setWorkerMessage] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [content, setContent] = useState("");
@@ -202,50 +212,65 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     return data.asset as MediaAsset;
   }
 
-  const onSubmit = async (event: FormEvent) => {
+  async function buildSchedulePayload(scheduleAtUtc: string): Promise<ScheduleRequest> {
+    const image = await uploadPendingImage();
+    return {
+      content,
+      selectedPlatforms,
+      scheduleAtUtc,
+      variants,
+      image,
+      platformOptions: selectedPlatforms.includes("reddit")
+        ? {
+            reddit: {
+              title: redditTitle,
+              subreddit: redditSubreddit
+            }
+          }
+        : undefined
+    };
+  }
+
+  function resetComposer() {
+    setContent("");
+    setRemoteImageUrl("");
+    setImagePreviewUrl("");
+    setPendingImage(null);
+    setScheduleAtLocal(localDateTimeValue());
+    setVariants({});
+    setRedditTitle("");
+    setRedditSubreddit("");
+  }
+
+  async function submitSchedule(endpoint: string, scheduleAtUtc: string, fallbackError: string) {
+    const payload = await buildSchedulePayload(scheduleAtUtc);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || fallbackError);
+    }
+
+    resetComposer();
+    await loadInitial();
+    return data;
+  }
+
+  const onSend = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
-    setWorkerMessage("");
+    setActionMessage("");
     setLoading(true);
 
     try {
-      const image = await uploadPendingImage();
-      const payload: ScheduleRequest = {
-        content,
-        selectedPlatforms,
-        scheduleAtUtc: new Date(scheduleAtLocal).toISOString(),
-        variants,
-        image,
-        platformOptions: selectedPlatforms.includes("reddit")
-          ? {
-              reddit: {
-                title: redditTitle,
-                subreddit: redditSubreddit
-              }
-            }
-          : undefined
-      };
-
-      const response = await fetch("/api/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Schedule request failed.");
-      }
-
-      setContent("");
-      setRemoteImageUrl("");
-      setImagePreviewUrl("");
-      setPendingImage(null);
-      setScheduleAtLocal(localDateTimeValue());
-      setVariants({});
-      setRedditTitle("");
-      setRedditSubreddit("");
-      await loadInitial();
+      const data = await submitSchedule("/api/schedule/send", new Date().toISOString(), "Send request failed.");
+      setActionMessage(
+        `Sent ${data.result.processed}, succeeded ${data.result.succeeded}, failed ${data.result.failed}.`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
@@ -253,27 +278,44 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     }
   };
 
-  const runWorker = async () => {
-    setWorkerLoading(true);
+  const onQueuePost = async () => {
+    setQueueLoading(true);
     setError("");
-    setWorkerMessage("");
+    setActionMessage("");
     try {
-      const response = await fetch("/api/worker/tick", { method: "POST" });
+      await submitSchedule("/api/schedule", new Date(scheduleAtLocal).toISOString(), "Schedule request failed.");
+      setActionMessage("Post queued.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error.");
+    } finally {
+      setQueueLoading(false);
+    }
+  };
+
+  const sendQueuedPostNow = async (postId: string) => {
+    setSendingPostId(postId);
+    setError("");
+    setActionMessage("");
+    try {
+      const response = await fetch(`/api/schedule/${postId}/send-now`, { method: "POST" });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Worker failed.");
+        throw new Error(data.error || "Send now request failed.");
       }
       const result = data.result;
-      setWorkerMessage(
-        `Processed ${result.processed}, succeeded ${result.succeeded}, failed ${result.failed}, queued ${result.remainingQueued}.`
+      setActionMessage(
+        `Sent ${result.processed}, succeeded ${result.succeeded}, failed ${result.failed}, queued ${result.remainingQueued}.`
       );
       await loadInitial();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error.");
     } finally {
-      setWorkerLoading(false);
+      setSendingPostId("");
     }
   };
+
+  const statusLabel = (status: ScheduledPostStatus | QueueJobStatus) => status.replace("_", " ").toUpperCase();
+  const statusClass = (status: ScheduledPostStatus | QueueJobStatus) => `status-pill status-${status}`;
 
   return (
     <main className="container">
@@ -285,11 +327,11 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           </p>
         </div>
         <h1>Social Scheduler MVP</h1>
-        <p>Compose, upload one durable image, schedule in UTC, and execute via queue worker.</p>
+        <p>Compose once, send immediately, or queue a scheduled post with visible platform status.</p>
       </section>
 
       <div className="layout">
-        <form className="panel" onSubmit={onSubmit}>
+        <form className="panel" onSubmit={onSend}>
           <h2>Compose and Schedule</h2>
           <p className="meta">Use Settings for platform setup. The studio only schedules against connected accounts.</p>
 
@@ -452,14 +494,14 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           ) : null}
 
           {error && <p className="error">{error}</p>}
-          {workerMessage && <p className="success">{workerMessage}</p>}
+          {actionMessage && <p className="success">{actionMessage}</p>}
 
           <div className="actions">
             <button className="primary" type="submit" disabled={loading}>
-              {loading ? "Scheduling..." : "Queue Post"}
+              {loading ? "Sending..." : "Send"}
             </button>
-            <button className="secondary" type="button" onClick={runWorker} disabled={workerLoading}>
-              {workerLoading ? "Running..." : "Run Worker Tick"}
+            <button className="secondary" type="button" onClick={onQueuePost} disabled={queueLoading || loading}>
+              {queueLoading ? "Queueing..." : "Queue Post"}
             </button>
           </div>
         </form>
@@ -477,17 +519,35 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
               {history.length === 0 && <p className="meta">No scheduled posts yet.</p>}
               {history.map((item) => (
                 <article key={item.post.id} className="card history-item">
-                  <h4>{item.post.selectedPlatforms.join(", ")}</h4>
+                  <div className="history-head">
+                    <h4>{item.post.selectedPlatforms.join(", ")}</h4>
+                    <span className={statusClass(item.post.status)}>{statusLabel(item.post.status)}</span>
+                  </div>
                   <p>{item.post.content.slice(0, 120)}</p>
-                  <p className="meta">
-                    {item.post.status.toUpperCase()} • {new Date(item.post.scheduleAtUtc).toUTCString()}
-                  </p>
-                  <p className="meta">
-                    Jobs:{" "}
-                    {item.jobs
-                      .map((job) => `${job.platform}:${job.status}(${job.attempts}/${job.maxAttempts})`)
-                      .join(" | ")}
-                  </p>
+                  <p className="meta">Scheduled: {new Date(item.post.scheduleAtUtc).toUTCString()}</p>
+                  <div className="job-list">
+                    {item.jobs.map((job) => (
+                      <div key={job.id} className="job-row">
+                        <span>{job.platform.toUpperCase()}</span>
+                        <span className={statusClass(job.status)}>{statusLabel(job.status)}</span>
+                        <span className="meta">
+                          {job.attempts}/{job.maxAttempts}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {item.jobs.some((job) => job.status === "queued") ? (
+                    <div className="actions compact-actions">
+                      <button
+                        className="secondary"
+                        type="button"
+                        onClick={() => sendQueuedPostNow(item.post.id)}
+                        disabled={sendingPostId === item.post.id}
+                      >
+                        {sendingPostId === item.post.id ? "Sending..." : "Send now"}
+                      </button>
+                    </div>
+                  ) : null}
                   {item.jobs.some((job) => job.externalUrl) ? (
                     <p className="meta">
                       Links:{" "}
