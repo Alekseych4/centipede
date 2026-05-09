@@ -82,6 +82,7 @@ export interface PlatformDefinition {
   authType: PlatformAuthType;
   connected: boolean;
   needsReconnect: boolean;
+  configError?: string;
   supportsImage: boolean;
   supportsScheduling: boolean;
   accountLabel?: string;

@@ -250,6 +250,21 @@ button {
   margin-top: 0.7rem;
 }
 
+.error-box {
+  border: 1px solid #d08966;
+  border-radius: 8px;
+  background: #fff7f2;
+  color: var(--warn);
+  font-size: 0.9rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem;
+}
+
+.error-box ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+}
+
 .success {
   color: #1c5f45;
   font-size: 0.88rem;

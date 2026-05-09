@@ -56,7 +56,15 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
     return platforms.filter((item) => item.connected);
   }, [platforms]);
 
+  const startupConfigErrors = useMemo(() => {
+    return platforms.flatMap((platform) => (platform.configError ? [platform.configError] : []));
+  }, [platforms]);
+
   const getPlatformStatusLabel = (platform: PlatformDefinition) => {
+    if (platform.configError) {
+      return "configuration missing";
+    }
+
     if (platform.needsReconnect) {
       return "reconnect required";
     }
@@ -142,13 +150,23 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
           <p className="meta">
             Connected: {connectedPlatforms.length === 0 ? "none" : connectedPlatforms.map((item) => item.label).join(", ")}
           </p>
+          {startupConfigErrors.length > 0 ? (
+            <div className="error-box">
+              <strong>Startup configuration needs attention</strong>
+              <ul>
+                {startupConfigErrors.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="grid platforms">
             {platforms.map((platform) => (
               <article key={platform.key} className="card platform-card static">
                 <div className="platform-row">
                   <strong>{platform.label}</strong>
-                  <span className={`pill ${platform.connected ? "ok" : "no"}`}>
+                  <span className={`pill ${platform.connected && !platform.configError ? "ok" : "no"}`}>
                     {getPlatformStatusLabel(platform)}
                   </span>
                 </div>
@@ -159,11 +177,17 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
                   {platform.warnings.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
+                  {platform.configError ? <li>{platform.configError}</li> : null}
                   {platform.lastError ? <li>{platform.lastError}</li> : null}
                 </ul>
                 <div className="actions">
                   {platform.key === "telegram" ? null : !platform.connected ? (
-                    <button className="secondary" type="button" disabled={connectLoading} onClick={() => startOAuthConnection(platform.key)}>
+                    <button
+                      className="secondary"
+                      type="button"
+                      disabled={connectLoading || Boolean(platform.configError)}
+                      onClick={() => startOAuthConnection(platform.key)}
+                    >
                       Connect
                     </button>
                   ) : (
@@ -207,7 +231,12 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
             </div>
 
             <div className="actions">
-              <button className="secondary" type="button" disabled={connectLoading} onClick={() => void connectTelegram()}>
+              <button
+                className="secondary"
+                type="button"
+                disabled={connectLoading || Boolean(platforms.find((item) => item.key === "telegram")?.configError)}
+                onClick={() => void connectTelegram()}
+              >
                 {connectLoading ? "Saving..." : "Save Telegram Connection"}
               </button>
               {platforms.find((item) => item.key === "telegram")?.connected ? (
