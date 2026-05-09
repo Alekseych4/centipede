@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:worker": "tsc -p tsconfig.worker.json",
     "start": "next start",
+    "worker": "node dist-worker/worker/scheduler.js",
     "postinstall": "DATABASE_URL=${DATABASE_URL:-$STORAGE_DATABASE_URL} prisma generate"
   },
   "dependencies": {
