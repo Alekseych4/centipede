@@ -46,6 +46,22 @@ export async function registerCronJob(post: ScheduledPost): Promise<void> {
   });
 }
 
+export async function updateCronJob(post: ScheduledPost): Promise<void> {
+  await callCron(`/jobs/${encodeURIComponent(post.id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      scheduledAtUtc: post.scheduleAtUtc,
+      idempotencyKey: post.idempotencyKey
+    })
+  });
+}
+
+export async function cancelCronJob(postId: string): Promise<void> {
+  await callCron(`/jobs/${encodeURIComponent(postId)}`, {
+    method: "DELETE"
+  });
+}
+
 export async function triggerCronJobNow(postId: string): Promise<void> {
   await callCron(`/jobs/${encodeURIComponent(postId)}/run-now`, {
     method: "POST"

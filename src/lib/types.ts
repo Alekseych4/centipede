@@ -2,8 +2,10 @@ export type PlatformKey = "telegram" | "x" | "reddit" | "linkedin";
 
 export type PlatformAuthType = "bot_token" | "oauth";
 export type ConnectionStatus = "connected" | "disconnected" | "reconnect_required";
-export type ScheduledPostStatus = "queued" | "partially_published" | "published" | "failed";
-export type QueueJobStatus = "queued" | "processing" | "published" | "failed";
+export type ScheduledPostStatus = "queued" | "partially_published" | "published" | "failed" | "canceled";
+export type QueueJobStatus = "queued" | "processing" | "published" | "failed" | "canceled";
+
+export type RichTextDocument = Record<string, unknown>;
 
 export interface MediaAsset {
   url: string;
@@ -19,11 +21,13 @@ export interface RedditPlatformOptions {
 
 export interface ScheduleRequest {
   content: string;
+  contentDocument?: RichTextDocument;
   idempotencyKey?: string;
   selectedPlatforms: PlatformKey[];
   scheduleAtUtc: string;
   image?: MediaAsset;
   variants?: Partial<Record<PlatformKey, string>>;
+  variantDocuments?: Partial<Record<PlatformKey, RichTextDocument>>;
   platformOptions?: {
     reddit?: RedditPlatformOptions;
   };
