@@ -125,6 +125,24 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="lp-section">
+        <div className="lp-section-head">
+          <h2>Where Your Content Can Go</h2>
+          <p>Plan once, then shape each post for the spaces where your audience listens, replies, and shares.</p>
+        </div>
+        <div className="lp-platform-grid">
+          {platformItems.map((platform) => (
+            <article key={platform.name} className="lp-platform-card">
+              <span className={`lp-platform-icon lp-platform-icon-${platform.key}`}>
+                <PlatformIcon platform={platform.key} />
+              </span>
+              <h3>{platform.name}</h3>
+              <p>{platform.note}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="lp-section lp-workflow-section" id="preview-workflow">
         <div className="lp-workflow-copy">
           <div className="lp-section-head">
@@ -178,24 +196,6 @@ export default function LandingPage() {
               <strong>Recent activity visible</strong>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="lp-section">
-        <div className="lp-section-head">
-          <h2>Where Your Content Can Go</h2>
-          <p>Plan once, then shape each post for the spaces where your audience listens, replies, and shares.</p>
-        </div>
-        <div className="lp-platform-grid">
-          {platformItems.map((platform) => (
-            <article key={platform.name} className="lp-platform-card">
-              <span className={`lp-platform-icon lp-platform-icon-${platform.key}`}>
-                <PlatformIcon platform={platform.key} />
-              </span>
-              <h3>{platform.name}</h3>
-              <p>{platform.note}</p>
-            </article>
-          ))}
         </div>
       </section>
 
