@@ -164,7 +164,7 @@ export function RichTextEditor({ id, value, placeholder, onChange }: RichTextEdi
     }
 
     if (JSON.stringify(editor.getJSON()) !== JSON.stringify(value)) {
-      editor.commands.setContent(value);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [editor, value]);
 
