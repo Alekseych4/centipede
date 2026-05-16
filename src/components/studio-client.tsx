@@ -40,6 +40,10 @@ function plainTextDocument(value: string): RichTextDocument {
   };
 }
 
+function documentKey(document: RichTextDocument): string {
+  return JSON.stringify(document);
+}
+
 function postCanBeModified(item: HistoryResponseItem): boolean {
   return (
     item.post.status !== "canceled" &&
@@ -594,14 +598,13 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
             </div>
 
             <div>
-              <label htmlFor="scheduleAt">Publish time (local input, stored as UTC)</label>
+              <label htmlFor="scheduleAt">Publish time</label>
               <input
                 id="scheduleAt"
                 type="datetime-local"
                 value={scheduleAtLocal}
                 onChange={(event) => setScheduleAtLocal(event.target.value)}
               />
-              <p className="meta">UTC value: {new Date(scheduleAtLocal).toISOString()}</p>
             </div>
           </div>
 
@@ -610,6 +613,7 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
               <div key={platform.key}>
                 <label htmlFor={`variant-${platform.key}`}>{platform.label} variant</label>
                 <RichTextEditor
+                  key={`${platform.key}-${variantDocuments[platform.key] ? "custom" : documentKey(contentDocument)}`}
                   id={`variant-${platform.key}`}
                   value={variantDocuments[platform.key] || contentDocument}
                   onChange={(document, text) => updateVariant(platform.key, document, text)}
