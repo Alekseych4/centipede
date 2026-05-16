@@ -587,7 +587,7 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           <section className="panel">
             <h2>Setup Reminder</h2>
             <p className="meta">
-              One-time account setup lives in Settings. Return here after connecting Telegram, X, Reddit, or LinkedIn.
+              One-time account setup lives in Settings. Return here after connecting Telegram, X, or LinkedIn.
             </p>
             <div className="actions">
               <Link className="button-link secondary" href="/settings">

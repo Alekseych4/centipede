@@ -5,7 +5,8 @@ type LandingPlatform = "telegram" | "x" | "reddit" | "linkedin";
 const platformItems = [
   { key: "telegram" as const, name: "Telegram", note: "Share updates with channels and groups that move fast." },
   { key: "x" as const, name: "X", note: "Turn quick thoughts into timely social moments." },
-  { key: "reddit" as const, name: "Reddit", note: "Bring discussion-ready posts into focused communities." },
+  // Reddit is hidden until production support is enabled.
+  // { key: "reddit" as const, name: "Reddit", note: "Bring discussion-ready posts into focused communities." },
   { key: "linkedin" as const, name: "LinkedIn", note: "Show up with polished updates for your professional audience." }
 ];
 
