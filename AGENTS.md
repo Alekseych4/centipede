@@ -21,7 +21,7 @@ Platform status:
 - Build for production: `npm run build`
 - Start production server (after build): `npm run start`
 
-Required environment is documented in `.env.example`. Important values include Clerk keys, `STORAGE_DATABASE_URL` or `DATABASE_URL`, `CONNECTION_ENCRYPTION_KEY`, `WORKER_SECRET`, `BLOB_READ_WRITE_TOKEN`, `APP_URL`, and OAuth client credentials.
+Required environment is documented in `.env.example`. Important values include Clerk keys, `STORAGE_DATABASE_URL` or `DATABASE_URL`, `CONNECTION_ENCRYPTION_KEY`, `CENTIPEDE_WORKER_SECRET`, `BLOB_READ_WRITE_TOKEN`, `APP_URL`, and OAuth client credentials.
 
 ## Git Workflow
 
