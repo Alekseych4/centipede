@@ -26,6 +26,29 @@ const featureItems = [
   }
 ];
 
+const workflowItems = [
+  {
+    step: "1",
+    title: "Draft once",
+    description: "Start with the core idea, announcement, or update you want to share."
+  },
+  {
+    step: "2",
+    title: "Shape each channel",
+    description: "Adjust tone and length for the spaces where your audience expects to hear from you."
+  },
+  {
+    step: "3",
+    title: "Pick the moment",
+    description: "Choose when the post should go out and keep your calendar moving ahead of time."
+  },
+  {
+    step: "4",
+    title: "Track the result",
+    description: "Check what was sent, what is scheduled, and what needs another look."
+  }
+];
+
 const pricingItems = [
   {
     tier: "Starter",
@@ -96,9 +119,65 @@ export default function LandingPage() {
           <Link className="lp-btn-primary" href="/studio">
             Go To Studio
           </Link>
-          <a className="lp-btn-secondary" href="#">
+          <a className="lp-btn-secondary" href="#preview-workflow">
             Preview Workflow
           </a>
+        </div>
+      </section>
+
+      <section className="lp-section lp-workflow-section" id="preview-workflow">
+        <div className="lp-workflow-copy">
+          <div className="lp-section-head">
+            <h2>See The Workflow Before You Start</h2>
+            <p>
+              A simple path from idea to scheduled posts, designed for creators who want to stay visible without rebuilding
+              every update from scratch.
+            </p>
+          </div>
+          <ol className="lp-workflow-steps">
+            {workflowItems.map((item) => (
+              <li key={item.step} className="lp-workflow-step">
+                <span>{item.step}</span>
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="lp-workflow-preview" aria-label="Workflow preview">
+          <div className="lp-preview-toolbar">
+            <span>Campaign draft</span>
+            <strong>Tue, 10:30</strong>
+          </div>
+          <div className="lp-preview-composer">
+            <p>New drop is live today. Here is what changed and why it matters.</p>
+          </div>
+          <div className="lp-preview-channels" aria-label="Selected channels">
+            <span>Telegram</span>
+            <span>X</span>
+            <span>LinkedIn</span>
+          </div>
+          <div className="lp-preview-schedule">
+            <span>Scheduled for</span>
+            <strong>Tue, 10:30</strong>
+          </div>
+          <div className="lp-preview-status-grid">
+            <div>
+              <span>Ready</span>
+              <strong>Ready to post</strong>
+            </div>
+            <div>
+              <span>Variants</span>
+              <strong>Tailored for each channel</strong>
+            </div>
+            <div>
+              <span>History</span>
+              <strong>Recent activity visible</strong>
+            </div>
+          </div>
         </div>
       </section>
 
