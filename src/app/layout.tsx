@@ -5,8 +5,8 @@ import { auth } from "@clerk/nextjs/server";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Centipede | Cross-Post Scheduling",
-  description: "Schedule and process cross-platform posts for Telegram, X, Reddit, and LinkedIn."
+  title: "Centipede | Social Scheduling For Creators",
+  description: "Plan, tailor, and schedule posts across social channels from one creator-friendly studio."
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
