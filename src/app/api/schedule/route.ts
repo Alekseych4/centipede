@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUserId } from "../../../lib/auth";
+import { registerCronJob } from "../../../lib/cron-service";
 import { createSchedule } from "../../../lib/schedules";
 import { ScheduleRequest } from "../../../lib/types";
 
@@ -12,6 +13,7 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as ScheduleRequest;
     const created = await createSchedule(userId, payload);
+    await registerCronJob(created);
     return NextResponse.json({ item: created }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
