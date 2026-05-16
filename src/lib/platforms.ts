@@ -23,13 +23,14 @@ export const PLATFORM_DEFINITIONS: StaticPlatformDefinition[] = [
     supportsImage: true,
     constraints: ["Member profile posting only", "Requires w_member_social", "Token re-connect needed after expiry"]
   },
-  {
-    key: "reddit",
-    label: "Reddit",
-    authType: "oauth",
-    supportsImage: false,
-    constraints: ["Self-post only", "Requires subreddit + title", "Images ignored in v1"]
-  },
+  // Reddit is hidden until production support is enabled.
+  // {
+  //   key: "reddit",
+  //   label: "Reddit",
+  //   authType: "oauth",
+  //   supportsImage: false,
+  //   constraints: ["Self-post only", "Requires subreddit + title", "Images ignored in v1"]
+  // },
   {
     key: "x",
     label: "X",

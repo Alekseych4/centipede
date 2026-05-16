@@ -191,7 +191,8 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
             <ul className="meta-list">
               <li>Telegram uses a guided bot setup flow from Account Connections.</li>
               <li>X uses OAuth and redirects back here after consent.</li>
-              <li>Reddit uses OAuth and needs subreddit plus title later at schedule time.</li>
+              {/* Reddit is hidden until production support is enabled. */}
+              {/* <li>Reddit uses OAuth and needs subreddit plus title later at schedule time.</li> */}
               <li>LinkedIn uses member-profile OAuth and may require reconnect after token expiry.</li>
             </ul>
           </section>

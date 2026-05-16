@@ -3,24 +3,26 @@ import Link from "next/link";
 type LandingPlatform = "telegram" | "x" | "reddit" | "linkedin";
 
 const platformItems = [
-  { key: "telegram" as const, name: "Telegram", note: "Fast channel and group delivery." },
-  { key: "x" as const, name: "X", note: "Short-form, high-tempo social updates." },
-  { key: "reddit" as const, name: "Reddit", note: "Community-driven threads and posts." },
-  { key: "linkedin" as const, name: "LinkedIn", note: "Professional audience positioning." }
+  { key: "telegram" as const, name: "Telegram", note: "Share updates with channels and groups that move fast." },
+  { key: "x" as const, name: "X", note: "Turn quick thoughts into timely social moments." },
+  // Reddit is hidden until production support is enabled.
+  // { key: "reddit" as const, name: "Reddit", note: "Bring discussion-ready posts into focused communities." },
+  { key: "linkedin" as const, name: "LinkedIn", note: "Show up with polished updates for your professional audience." }
 ];
 
 const featureItems = [
   {
-    title: "One Composer, Multiple Variants",
-    description: "Write base content once, then override per platform when tone or length needs to differ."
+    title: "Start With One Draft",
+    description: "Write the core message once, then adjust the tone for each channel before it goes out."
   },
   {
-    title: "Queue Processing Model",
-    description: "Schedule in UTC and process posts through a deterministic queue worker for clear publish state."
+    title: "Plan Around Your Rhythm",
+    description:
+      "Schedule posts ahead of time so launches, updates, and daily ideas do not depend on being online at the perfect moment."
   },
   {
-    title: "Failure Logging Built In",
-    description: "Track attempts and failure details per platform to understand what failed and why."
+    title: "Stay Clear On What Happened",
+    description: "See what was sent, what needs attention, and where to follow up without digging through every platform."
   }
 ];
 
@@ -29,23 +31,23 @@ const pricingItems = [
     tier: "Starter",
     price: "$0",
     cadence: "/month",
-    description: "Local evaluation for solo testing.",
-    points: ["Manual queue controls", "4 platform adapters", "In-memory data store"]
+    description: "For trying the workflow and organizing a solo posting routine.",
+    points: ["Plan posts ahead", "Tailor content by channel", "Track recent activity"]
   },
   {
     tier: "Builder",
     price: "$24",
     cadence: "/month",
-    description: "Suggested plan shape for early teams.",
-    points: ["All Starter features", "Priority queue visibility", "Exportable activity feed"],
+    description: "For creators posting regularly across multiple social spaces.",
+    points: ["Everything in Starter", "Better visibility across upcoming posts", "Activity history for repeat campaigns"],
     highlighted: true
   },
   {
     tier: "Scale",
     price: "$89",
     cadence: "/month",
-    description: "Template for larger scheduling operations.",
-    points: ["All Builder features", "Role-based workspace access", "Extended retention windows"]
+    description: "For higher-volume creators and small teams managing more moving parts.",
+    points: ["Everything in Builder", "Workspace-ready collaboration", "Longer campaign history"]
   }
 ];
 
@@ -84,26 +86,26 @@ export default function LandingPage() {
   return (
     <main className="lp-page">
       <section className="lp-hero">
-        <p className="lp-kicker">Cross-post scheduling, focused on execution</p>
-        <h1>Plan once, adapt per platform, and process reliably.</h1>
+        <p className="lp-kicker">Social planning for creators who post everywhere</p>
+        <h1>Keep your content moving without rewriting your day.</h1>
         <p className="lp-subtitle">
-          Centipede is a Next.js app for scheduling posts across Telegram, X, Reddit, and LinkedIn with queue-based
-          processing and platform-specific variants.
+          Centipede helps you prepare, tailor, and schedule posts across your favorite social channels so your ideas show
+          up consistently where your audience already spends time.
         </p>
         <div className="lp-actions">
           <Link className="lp-btn-primary" href="/studio">
             Go To Studio
           </Link>
           <a className="lp-btn-secondary" href="#">
-            View Demo Flow
+            Preview Workflow
           </a>
         </div>
       </section>
 
       <section className="lp-section">
         <div className="lp-section-head">
-          <h2>Featured Platforms</h2>
-          <p>Built around the channels Centipede currently supports.</p>
+          <h2>Where Your Content Can Go</h2>
+          <p>Plan once, then shape each post for the spaces where your audience listens, replies, and shares.</p>
         </div>
         <div className="lp-platform-grid">
           {platformItems.map((platform) => (
@@ -120,8 +122,8 @@ export default function LandingPage() {
 
       <section className="lp-section lp-section-alt">
         <div className="lp-section-head">
-          <h2>Current Functionality</h2>
-          <p>What the project supports now, without external API integrations.</p>
+          <h2>Made For Consistent Posting</h2>
+          <p>Less juggling, more momentum for your content calendar.</p>
         </div>
         <div className="lp-feature-grid">
           {featureItems.map((item) => (
@@ -135,8 +137,8 @@ export default function LandingPage() {
 
       <section className="lp-section">
         <div className="lp-section-head">
-          <h2>Pricing Layout</h2>
-          <p>Placeholder structure based on your requested visual direction.</p>
+          <h2>Plans For Different Posting Rhythms</h2>
+          <p>Simple options for testing the workflow, building consistency, or managing a fuller content calendar.</p>
         </div>
         <div className="lp-pricing-grid">
           {pricingItems.map((plan) => (
