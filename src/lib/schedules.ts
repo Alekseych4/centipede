@@ -515,6 +515,41 @@ export async function processDueJobs(
   return processJobs(due, userId);
 }
 
+export async function publishScheduledPostFromWorker(postId: string, now = new Date()): Promise<WorkerTickResult> {
+  const post = await prisma.scheduledPost.findUnique({
+    where: {
+      id: postId
+    }
+  });
+
+  if (!post) {
+    throw new Error("Scheduled post not found.");
+  }
+
+  await prisma.scheduledPost.update({
+    where: { id: postId },
+    data: {
+      scheduleAtUtc: now
+    }
+  });
+
+  await prisma.publishJob.updateMany({
+    where: {
+      postId,
+      status: "queued"
+    },
+    data: {
+      scheduledAtUtc: now
+    }
+  });
+
+  return processDueJobs(now, undefined, {
+    postId,
+    batchSize: 100,
+    workerId: `external-cron-${randomUUID()}`
+  });
+}
+
 export async function sendQueuedPostNow(
   userId: string,
   postId: string,
