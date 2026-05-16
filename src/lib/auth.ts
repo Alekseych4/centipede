@@ -13,7 +13,7 @@ export async function requireUserId(): Promise<string | NextResponse> {
 }
 
 export async function getWorkerInvocationAuth(request: Request): Promise<WorkerInvocationAuth | NextResponse> {
-  const workerSecret = optionalEnv("WORKER_SECRET");
+  const workerSecret = optionalEnv("CENTIPEDE_WORKER_SECRET");
   const providedSecret = request.headers.get("x-worker-secret");
 
   if (workerSecret && providedSecret === workerSecret) {
