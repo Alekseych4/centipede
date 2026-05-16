@@ -611,9 +611,9 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                 <label htmlFor={`variant-${platform.key}`}>{platform.label} variant</label>
                 <RichTextEditor
                   id={`variant-${platform.key}`}
-                  value={variantDocuments[platform.key] || plainTextDocument(variants[platform.key] || "")}
+                  value={variantDocuments[platform.key] || contentDocument}
                   onChange={(document, text) => updateVariant(platform.key, document, text)}
-                  placeholder="Leave empty to use base content."
+                  placeholder="Starts with base content. Edit to customize this platform."
                 />
               </div>
             ))}
