@@ -644,6 +644,25 @@ button:disabled {
   margin-top: 2rem;
 }
 
+.lp-workflow-section {
+  scroll-margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+  gap: 1rem;
+  align-items: stretch;
+  padding: 1.2rem;
+  border-radius: 20px;
+  background: #f7faf0;
+  border: 1px solid #d8dfcf;
+}
+
+.lp-workflow-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
 .lp-section-head h2 {
   margin: 0;
   font-size: 1.55rem;
@@ -653,6 +672,144 @@ button:disabled {
 .lp-section-head p {
   margin: 0.42rem 0 0;
   color: #586557;
+}
+
+.lp-workflow-steps {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.72rem;
+}
+
+.lp-workflow-step {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.78rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid #dfe6d7;
+}
+
+.lp-workflow-step > span {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1d6f4f;
+  color: #fff;
+  font-weight: 800;
+}
+
+.lp-workflow-step h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.lp-workflow-step p {
+  margin: 0.3rem 0 0;
+  color: #586557;
+}
+
+.lp-workflow-preview {
+  min-width: 0;
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #d4decb;
+  box-shadow: 0 16px 40px rgba(18, 38, 26, 0.08);
+}
+
+.lp-preview-toolbar,
+.lp-preview-schedule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  color: #576457;
+}
+
+.lp-preview-toolbar strong,
+.lp-preview-schedule strong {
+  color: #243227;
+}
+
+.lp-preview-composer {
+  min-height: 8rem;
+  display: flex;
+  align-items: flex-start;
+  padding: 1rem;
+  border-radius: 14px;
+  background: #f6f8f1;
+  border: 1px solid #dfe6d7;
+}
+
+.lp-preview-composer p {
+  margin: 0;
+  color: #243227;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.lp-preview-channels,
+.lp-preview-status-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.lp-preview-channels {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lp-preview-channels span {
+  text-align: center;
+  border-radius: 999px;
+  padding: 0.52rem 0.35rem;
+  color: #1f3d31;
+  background: #eaf2e5;
+  border: 1px solid #d4decb;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.lp-preview-schedule {
+  padding: 0.78rem;
+  border-radius: 14px;
+  background: #eef2e1;
+}
+
+.lp-preview-status-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lp-preview-status-grid div {
+  min-width: 0;
+  border-radius: 14px;
+  padding: 0.78rem;
+  background: #fff;
+  border: 1px solid #dfe6d7;
+}
+
+.lp-preview-status-grid span {
+  display: block;
+  color: #6a7568;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lp-preview-status-grid strong {
+  display: block;
+  margin-top: 0.38rem;
+  color: #243227;
+  line-height: 1.25;
 }
 
 .lp-platform-grid,
@@ -793,6 +950,10 @@ button:disabled {
 }
 
 @media (max-width: 1000px) {
+  .lp-workflow-section {
+    grid-template-columns: 1fr;
+  }
+
   .lp-platform-grid,
   .lp-feature-grid,
   .lp-pricing-grid {
@@ -818,6 +979,31 @@ button:disabled {
 
   .lp-hero {
     padding: 1.3rem;
+  }
+
+  .lp-workflow-section {
+    padding: 1rem;
+  }
+
+  .lp-workflow-step {
+    grid-template-columns: 1.8rem minmax(0, 1fr);
+  }
+
+  .lp-workflow-step > span {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+
+  .lp-preview-toolbar,
+  .lp-preview-schedule {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.28rem;
+  }
+
+  .lp-preview-channels,
+  .lp-preview-status-grid {
+    grid-template-columns: 1fr;
   }
 
   .lp-platform-grid,
