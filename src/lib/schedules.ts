@@ -9,6 +9,7 @@ import {
   PlatformKey,
   PublishJob,
   RedditPlatformOptions,
+  RichTextDocument,
   ScheduleRequest,
   ScheduledPost,
   ScheduledPostStatus,
@@ -65,6 +66,31 @@ function normalizeVariants(value: Prisma.JsonValue | null | undefined): Partial<
   return result;
 }
 
+function normalizeRichTextDocument(value: Prisma.JsonValue | null | undefined): RichTextDocument | undefined {
+  if (!isObject(value)) {
+    return undefined;
+  }
+
+  return value as RichTextDocument;
+}
+
+function normalizeVariantDocuments(
+  value: Prisma.JsonValue | null | undefined
+): Partial<Record<PlatformKey, RichTextDocument>> {
+  if (!isObject(value)) {
+    return {};
+  }
+
+  const result: Partial<Record<PlatformKey, RichTextDocument>> = {};
+  for (const key of ["telegram", "x", "reddit", "linkedin"] as PlatformKey[]) {
+    const candidate = value[key];
+    if (isObject(candidate)) {
+      result[key] = candidate as RichTextDocument;
+    }
+  }
+  return result;
+}
+
 function normalizeMedia(post: PrismaScheduledPost): MediaAsset | undefined {
   if (!post.imageUrl || !post.imagePathname || !post.imageMimeType || typeof post.imageSizeBytes !== "number") {
     return undefined;
@@ -83,10 +109,12 @@ function toScheduledPost(post: PrismaScheduledPost): ScheduledPost {
     id: post.id,
     userId: post.userId,
     content: post.content,
+    contentDocument: normalizeRichTextDocument(post.contentDocument),
     idempotencyKey: post.idempotencyKey,
     scheduleAtUtc: post.scheduleAtUtc.toISOString(),
     selectedPlatforms: post.selectedPlatforms as PlatformKey[],
     variants: normalizeVariants(post.variants),
+    variantDocuments: normalizeVariantDocuments(post.variantDocuments),
     image: normalizeMedia(post),
     platformOptions: isObject(post.platformOptions)
       ? {
@@ -185,6 +213,9 @@ async function validatePlatformSelections(userId: string, payload: ScheduleReque
 }
 
 function computePostStatus(jobs: PrismaPublishJob[]): ScheduledPostStatus {
+  if (jobs.length > 0 && jobs.every((job) => job.status === "canceled")) {
+    return "canceled";
+  }
   if (jobs.length > 0 && jobs.every((job) => job.status === "published")) {
     return "published";
   }
@@ -195,6 +226,44 @@ function computePostStatus(jobs: PrismaPublishJob[]): ScheduledPostStatus {
     return "partially_published";
   }
   return "queued";
+}
+
+function assertEditablePost(status: string, jobs: PrismaPublishJob[]): void {
+  if (status === "canceled") {
+    throw new Error("Canceled posts cannot be edited or canceled.");
+  }
+
+  if (jobs.some((job) => job.status === "published" || job.status === "processing")) {
+    throw new Error("Posts that are publishing or already published cannot be edited or canceled.");
+  }
+}
+
+function getScheduleData(userId: string, payload: ScheduleRequest) {
+  return {
+    userId,
+    content: payload.content,
+    contentDocument: (payload.contentDocument || Prisma.DbNull) as Prisma.InputJsonValue,
+    scheduleAtUtc: new Date(payload.scheduleAtUtc),
+    imageUrl: payload.image?.url || null,
+    imagePathname: payload.image?.pathname || null,
+    imageMimeType: payload.image?.mimeType || null,
+    imageSizeBytes: payload.image?.sizeBytes || null,
+    selectedPlatforms: payload.selectedPlatforms,
+    variants: (payload.variants || {}) as Prisma.InputJsonValue,
+    variantDocuments: (payload.variantDocuments || {}) as Prisma.InputJsonValue,
+    platformOptions: (payload.platformOptions || {}) as Prisma.InputJsonValue
+  };
+}
+
+function getPublishJobCreateData(resolvedKey: string, payload: ScheduleRequest) {
+  return payload.selectedPlatforms.map((platform) => ({
+    platform,
+    status: "queued",
+    scheduledAtUtc: new Date(payload.scheduleAtUtc),
+    idempotencyKey: `${resolvedKey}:${platform}`,
+    attempts: 0,
+    maxAttempts: MAX_ATTEMPTS
+  }));
 }
 
 async function refreshPostStatus(postId: string): Promise<void> {
@@ -225,31 +294,115 @@ export async function createSchedule(userId: string, payload: ScheduleRequest): 
 
   const post = await prisma.scheduledPost.create({
     data: {
-      userId,
-      content: payload.content,
+      ...getScheduleData(userId, payload),
       idempotencyKey: resolvedKey,
-      scheduleAtUtc: new Date(payload.scheduleAtUtc),
-      imageUrl: payload.image?.url,
-      imagePathname: payload.image?.pathname,
-      imageMimeType: payload.image?.mimeType,
-      imageSizeBytes: payload.image?.sizeBytes,
-      selectedPlatforms: payload.selectedPlatforms,
-      variants: payload.variants || {},
-      platformOptions: (payload.platformOptions || {}) as Prisma.InputJsonValue,
       jobs: {
-        create: payload.selectedPlatforms.map((platform) => ({
-          platform,
-          status: "queued",
-          scheduledAtUtc: new Date(payload.scheduleAtUtc),
-          idempotencyKey: `${resolvedKey}:${platform}`,
-          attempts: 0,
-          maxAttempts: MAX_ATTEMPTS
-        }))
+        create: getPublishJobCreateData(resolvedKey, payload)
       }
     }
   });
 
   return toScheduledPost(post);
+}
+
+export async function updateScheduledPost(
+  userId: string,
+  postId: string,
+  payload: ScheduleRequest
+): Promise<ScheduledPost> {
+  validateCommonPayload(payload);
+  await validatePlatformSelections(userId, payload);
+
+  const existing = await prisma.scheduledPost.findFirst({
+    where: {
+      id: postId,
+      userId
+    },
+    include: {
+      jobs: true
+    }
+  });
+
+  if (!existing) {
+    throw new Error("Scheduled post not found.");
+  }
+
+  assertEditablePost(existing.status, existing.jobs);
+
+  const resolvedKey = payload.idempotencyKey?.trim() || makeIdempotencyKey(payload);
+  const duplicate = await prisma.scheduledPost.findUnique({
+    where: { idempotencyKey: resolvedKey }
+  });
+
+  if (duplicate && duplicate.id !== postId) {
+    throw new Error("A scheduled post with the same idempotency key already exists.");
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.publishJob.deleteMany({
+      where: {
+        postId
+      }
+    });
+
+    return tx.scheduledPost.update({
+      where: {
+        id: postId
+      },
+      data: {
+        ...getScheduleData(userId, payload),
+        idempotencyKey: resolvedKey,
+        status: "queued",
+        jobs: {
+          create: getPublishJobCreateData(resolvedKey, payload)
+        }
+      }
+    });
+  });
+
+  return toScheduledPost(updated);
+}
+
+export async function cancelScheduledPost(userId: string, postId: string): Promise<ScheduledPost> {
+  const existing = await prisma.scheduledPost.findFirst({
+    where: {
+      id: postId,
+      userId
+    },
+    include: {
+      jobs: true
+    }
+  });
+
+  if (!existing) {
+    throw new Error("Scheduled post not found.");
+  }
+
+  assertEditablePost(existing.status, existing.jobs);
+
+  const canceled = await prisma.$transaction(async (tx) => {
+    await tx.publishJob.updateMany({
+      where: {
+        postId
+      },
+      data: {
+        status: "canceled",
+        lockedBy: null,
+        lockedAt: null
+      }
+    });
+
+    return tx.scheduledPost.update({
+      where: {
+        id: postId
+      },
+      data: {
+        status: "canceled"
+      }
+    });
+  });
+
+  return toScheduledPost(canceled);
 }
 
 export async function createAndSendSchedule(
@@ -526,6 +679,10 @@ export async function publishScheduledPostFromWorker(postId: string, now = new D
     throw new Error("Scheduled post not found.");
   }
 
+  if (post.status === "canceled") {
+    throw new Error("Canceled posts cannot be published.");
+  }
+
   await prisma.scheduledPost.update({
     where: { id: postId },
     data: {
@@ -564,6 +721,10 @@ export async function sendQueuedPostNow(
 
   if (!post) {
     throw new Error("Scheduled post not found.");
+  }
+
+  if (post.status === "canceled") {
+    throw new Error("Canceled posts cannot be sent.");
   }
 
   await prisma.scheduledPost.update({

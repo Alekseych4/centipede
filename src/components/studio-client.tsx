@@ -9,14 +9,42 @@ import {
   PlatformDefinition,
   PlatformKey,
   QueueJobStatus,
+  RichTextDocument,
   ScheduleRequest,
   ScheduledPostStatus
 } from "../lib/types";
 import { getDefaultPlatformDefinitions } from "../lib/platforms";
+import { RichTextEditor, RichTextPreview } from "./rich-text-editor";
 
 function localDateTimeValue(date = new Date()) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
   return local.toISOString().slice(0, 16);
+}
+
+function emptyDocument(): RichTextDocument {
+  return {
+    type: "doc",
+    content: [{ type: "paragraph" }]
+  };
+}
+
+function plainTextDocument(value: string): RichTextDocument {
+  return {
+    type: "doc",
+    content: value
+      ? value.split("\n").map((line) => ({
+          type: "paragraph",
+          content: line ? [{ type: "text", text: line }] : undefined
+        }))
+      : [{ type: "paragraph" }]
+  };
+}
+
+function postCanBeModified(item: HistoryResponseItem): boolean {
+  return (
+    item.post.status !== "canceled" &&
+    !item.jobs.some((job) => job.status === "published" || job.status === "processing")
+  );
 }
 
 interface HistoryPayload {
@@ -46,19 +74,26 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
   const [failures, setFailures] = useState<FailureLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [queueLoading, setQueueLoading] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [sendingPostId, setSendingPostId] = useState("");
+  const [cancelingPostId, setCancelingPostId] = useState("");
+  const [editingPostId, setEditingPostId] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [content, setContent] = useState("");
+  const [contentDocument, setContentDocument] = useState<RichTextDocument>(() => emptyDocument());
   const [remoteImageUrl, setRemoteImageUrl] = useState("");
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
+  const [existingImage, setExistingImage] = useState<MediaAsset | undefined>();
   const [scheduleAtLocal, setScheduleAtLocal] = useState(localDateTimeValue());
   const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformKey[]>([]);
   const [variants, setVariants] = useState<Partial<Record<PlatformKey, string>>>({});
+  const [variantDocuments, setVariantDocuments] = useState<Partial<Record<PlatformKey, RichTextDocument>>>({});
   const [redditTitle, setRedditTitle] = useState("");
   const [redditSubreddit, setRedditSubreddit] = useState("");
 
@@ -133,15 +168,25 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     );
   };
 
-  const updateVariant = (platform: PlatformKey, value: string) => {
+  const updateContent = (document: RichTextDocument, text: string) => {
+    setContentDocument(document);
+    setContent(text);
+  };
+
+  const updateVariant = (platform: PlatformKey, document: RichTextDocument, text: string) => {
     setVariants((current) => ({
       ...current,
-      [platform]: value
+      [platform]: text
+    }));
+    setVariantDocuments((current) => ({
+      ...current,
+      [platform]: document
     }));
   };
 
   const setImageFromDataUrl = (value: string, fileName?: string) => {
     setPendingImage({ kind: "dataUrl", value, fileName });
+    setExistingImage(undefined);
     setImagePreviewUrl(value);
     setRemoteImageUrl("");
     setError("");
@@ -218,12 +263,14 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
   }
 
   async function buildSchedulePayload(scheduleAtUtc: string): Promise<ScheduleRequest> {
-    const image = await uploadPendingImage();
+    const image = (await uploadPendingImage()) || existingImage;
     return {
       content,
+      contentDocument,
       selectedPlatforms,
       scheduleAtUtc,
       variants,
+      variantDocuments,
       image,
       platformOptions: selectedPlatforms.includes("reddit")
         ? {
@@ -238,13 +285,17 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
 
   function resetComposer() {
     setContent("");
+    setContentDocument(emptyDocument());
     setRemoteImageUrl("");
     setImagePreviewUrl("");
     setPendingImage(null);
+    setExistingImage(undefined);
     setScheduleAtLocal(localDateTimeValue());
     setVariants({});
+    setVariantDocuments({});
     setRedditTitle("");
     setRedditSubreddit("");
+    setEditingPostId("");
   }
 
   async function submitSchedule(endpoint: string, scheduleAtUtc: string, fallbackError: string) {
@@ -264,6 +315,97 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
     await loadInitial();
     return data;
   }
+
+  const startEditingPost = (item: HistoryResponseItem) => {
+    if (!postCanBeModified(item)) {
+      setError("Posts that are publishing or already published cannot be edited.");
+      return;
+    }
+
+    const nextVariantDocuments: Partial<Record<PlatformKey, RichTextDocument>> = {};
+    for (const key of ["telegram", "x", "reddit", "linkedin"] as PlatformKey[]) {
+      const richDocument = item.post.variantDocuments?.[key];
+      const plainVariant = item.post.variants?.[key];
+      if (richDocument) {
+        nextVariantDocuments[key] = richDocument;
+      } else if (plainVariant) {
+        nextVariantDocuments[key] = plainTextDocument(plainVariant);
+      }
+    }
+
+    setEditingPostId(item.post.id);
+    setContent(item.post.content);
+    setContentDocument(item.post.contentDocument || plainTextDocument(item.post.content));
+    setSelectedPlatforms(item.post.selectedPlatforms);
+    setVariants(item.post.variants || {});
+    setVariantDocuments(nextVariantDocuments);
+    setScheduleAtLocal(localDateTimeValue(new Date(item.post.scheduleAtUtc)));
+    setExistingImage(item.post.image);
+    setPendingImage(null);
+    setRemoteImageUrl(item.post.image?.url || "");
+    setImagePreviewUrl(item.post.image?.url || "");
+    setRedditTitle(item.post.platformOptions?.reddit?.title || "");
+    setRedditSubreddit(item.post.platformOptions?.reddit?.subreddit || "");
+    setError("");
+    setActionMessage("Editing scheduled post.");
+    window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
+
+  const onSaveEdit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editingPostId) {
+      return;
+    }
+
+    setSavingEdit(true);
+    setError("");
+    setActionMessage("");
+
+    try {
+      const payload = await buildSchedulePayload(new Date(scheduleAtLocal).toISOString());
+      const response = await fetch(`/api/schedule/${editingPostId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Schedule update failed.");
+      }
+
+      resetComposer();
+      await loadInitial();
+      setActionMessage("Post updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const cancelScheduledPost = async (postId: string) => {
+    setCancelingPostId(postId);
+    setError("");
+    setActionMessage("");
+
+    try {
+      const response = await fetch(`/api/schedule/${postId}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Schedule cancel failed.");
+      }
+
+      if (editingPostId === postId) {
+        resetComposer();
+      }
+      await loadInitial();
+      setActionMessage("Post canceled.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error.");
+    } finally {
+      setCancelingPostId("");
+    }
+  };
 
   const onSend = async (event: FormEvent) => {
     event.preventDefault();
@@ -336,8 +478,8 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
       </section>
 
       <div className="layout">
-        <form className="panel" onSubmit={onSend}>
-          <h2>Compose and Schedule</h2>
+        <form ref={formRef} className="panel" onSubmit={editingPostId ? onSaveEdit : onSend}>
+          <h2>{editingPostId ? "Edit Scheduled Post" : "Compose and Schedule"}</h2>
           <p className="meta">Use Settings for platform setup. The studio only schedules against connected accounts.</p>
 
           <section className="panel section-panel">
@@ -387,11 +529,11 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           <div className="grid">
             <div>
               <label htmlFor="content">Base content</label>
-              <textarea
+              <RichTextEditor
                 id="content"
                 placeholder="Shared text for all platforms..."
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
+                value={contentDocument}
+                onChange={updateContent}
               />
             </div>
 
@@ -404,6 +546,7 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                   const value = event.target.value;
                   setRemoteImageUrl(value);
                   setImagePreviewUrl(value);
+                  setExistingImage(undefined);
                   setPendingImage(value.trim() ? { kind: "remoteUrl", value: value.trim() } : null);
                 }}
                 placeholder="https://..."
@@ -441,6 +584,7 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                       setRemoteImageUrl("");
                       setImagePreviewUrl("");
                       setPendingImage(null);
+                      setExistingImage(undefined);
                     }}
                   >
                     Remove Image
@@ -465,10 +609,10 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
             {selectedPlatformDefinitions.map((platform) => (
               <div key={platform.key}>
                 <label htmlFor={`variant-${platform.key}`}>{platform.label} variant</label>
-                <textarea
+                <RichTextEditor
                   id={`variant-${platform.key}`}
-                  value={variants[platform.key] || ""}
-                  onChange={(event) => updateVariant(platform.key, event.target.value)}
+                  value={variantDocuments[platform.key] || plainTextDocument(variants[platform.key] || "")}
+                  onChange={(document, text) => updateVariant(platform.key, document, text)}
                   placeholder="Leave empty to use base content."
                 />
               </div>
@@ -502,12 +646,25 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           {actionMessage && <p className="success">{actionMessage}</p>}
 
           <div className="actions">
-            <button className="primary" type="submit" disabled={loading}>
-              {loading ? "Sending..." : "Send"}
-            </button>
-            <button className="secondary" type="button" onClick={onQueuePost} disabled={queueLoading || loading}>
-              {queueLoading ? "Queueing..." : "Queue Post"}
-            </button>
+            {editingPostId ? (
+              <>
+                <button className="primary" type="submit" disabled={savingEdit}>
+                  {savingEdit ? "Saving..." : "Save Changes"}
+                </button>
+                <button className="secondary" type="button" onClick={resetComposer} disabled={savingEdit}>
+                  Cancel Editing
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="primary" type="submit" disabled={loading}>
+                  {loading ? "Sending..." : "Send"}
+                </button>
+                <button className="secondary" type="button" onClick={onQueuePost} disabled={queueLoading || loading}>
+                  {queueLoading ? "Queueing..." : "Queue Post"}
+                </button>
+              </>
+            )}
           </div>
         </form>
 
@@ -515,12 +672,12 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
           <section className="panel">
             <h2>Preview</h2>
             <p className="meta">{selectedLabels || "No platform selected."}</p>
-            <div className="preview">{content || "Base content preview appears here."}</div>
+            <RichTextPreview document={contentDocument} fallback={content || "Base content preview appears here."} />
           </section>
 
           <section className="panel">
             <h2>Queue and Status</h2>
-            <div>
+            <div className="history-scroll">
               {history.length === 0 && <p className="meta">No scheduled posts yet.</p>}
               {history.map((item) => (
                 <article key={item.post.id} className="card history-item">
@@ -528,7 +685,7 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                     <h4>{item.post.selectedPlatforms.join(", ")}</h4>
                     <span className={statusClass(item.post.status)}>{statusLabel(item.post.status)}</span>
                   </div>
-                  <p>{item.post.content.slice(0, 120)}</p>
+                  <RichTextPreview document={item.post.contentDocument} fallback={item.post.content.slice(0, 120)} />
                   <p className="meta">Scheduled: {new Date(item.post.scheduleAtUtc).toUTCString()}</p>
                   <div className="job-list">
                     {item.jobs.map((job) => (
@@ -550,6 +707,21 @@ export function StudioClient({ userName, userEmail }: StudioClientProps) {
                         disabled={sendingPostId === item.post.id}
                       >
                         {sendingPostId === item.post.id ? "Sending..." : "Send now"}
+                      </button>
+                    </div>
+                  ) : null}
+                  {postCanBeModified(item) ? (
+                    <div className="actions compact-actions">
+                      <button className="secondary" type="button" onClick={() => startEditingPost(item)}>
+                        Edit
+                      </button>
+                      <button
+                        className="secondary"
+                        type="button"
+                        onClick={() => cancelScheduledPost(item.post.id)}
+                        disabled={cancelingPostId === item.post.id}
+                      >
+                        {cancelingPostId === item.post.id ? "Canceling..." : "Cancel Post"}
                       </button>
                     </div>
                   ) : null}

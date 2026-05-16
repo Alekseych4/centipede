@@ -42,6 +42,8 @@ model ScheduledPost {
   status         String       @default("queued")
   selectedPlatforms String[]
   variants       Json?
+  contentDocument Json?
+  variantDocuments Json?
   platformOptions Json?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

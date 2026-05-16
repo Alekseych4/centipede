@@ -239,6 +239,81 @@ button:disabled {
   background: #fbfcf6;
 }
 
+.rich-preview {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.rich-preview h3,
+.rich-preview h4,
+.rich-preview h5,
+.rich-preview p,
+.rich-preview ul,
+.rich-preview ol {
+  margin: 0;
+}
+
+.rich-preview ul,
+.rich-preview ol {
+  padding-left: 1.2rem;
+}
+
+.rich-editor-shell {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.rich-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  background: #fbfcf6;
+}
+
+.rich-editor-toolbar button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
+}
+
+.rich-editor-toolbar button.active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.rich-editor-content {
+  min-height: 160px;
+  padding: 0.75rem;
+  outline: none;
+}
+
+.rich-editor-content p,
+.rich-editor-content h1,
+.rich-editor-content h2,
+.rich-editor-content h3,
+.rich-editor-content ul,
+.rich-editor-content ol {
+  margin: 0 0 0.65rem;
+}
+
+.rich-editor-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.history-scroll {
+  max-height: 34rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
 .history-item + .history-item {
   margin-top: 0.7rem;
 }
@@ -303,6 +378,12 @@ button:disabled {
   background: #fff0f0;
   border-color: #e5b9b9;
   color: #7a2f2f;
+}
+
+.status-canceled {
+  background: #f1f1ee;
+  border-color: #c6c8bd;
+  color: #5b5d53;
 }
 
 .job-list {
