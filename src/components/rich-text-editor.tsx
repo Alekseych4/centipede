@@ -2,7 +2,8 @@
 
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { ReactNode, useEffect, useMemo } from "react";
+import { ReactNode, useEffect, useMemo, useRef } from "react";
+import { TELEGRAM_EMOJI_GROUPS } from "../lib/telegram-emojis";
 import { RichTextDocument } from "../lib/types";
 
 interface RichTextEditorProps {
@@ -128,6 +129,7 @@ export function RichTextPreview({ document, fallback }: RichTextPreviewProps) {
 }
 
 export function RichTextEditor({ id, value, placeholder, onChange }: RichTextEditorProps) {
+  const emojiPickerRef = useRef<HTMLDetailsElement>(null);
   const extensions = useMemo(
     () => [
       StarterKit.configure({
@@ -171,6 +173,13 @@ export function RichTextEditor({ id, value, placeholder, onChange }: RichTextEdi
   if (!editor) {
     return <div className="rich-editor-shell" />;
   }
+
+  const insertEmoji = (emoji: string) => {
+    editor.chain().focus().insertContent(emoji).run();
+    if (emojiPickerRef.current) {
+      emojiPickerRef.current.open = false;
+    }
+  };
 
   return (
     <div className="rich-editor-shell">
@@ -223,6 +232,29 @@ export function RichTextEditor({ id, value, placeholder, onChange }: RichTextEdi
         <button type="button" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
           Redo
         </button>
+        <details ref={emojiPickerRef} className="emoji-picker">
+          <summary aria-label="Insert emoji">Emoji</summary>
+          <div className="emoji-panel">
+            {TELEGRAM_EMOJI_GROUPS.map((group) => (
+              <section key={group.label} className="emoji-section" aria-label={`${group.label} emoji`}>
+                <h4>{group.label}</h4>
+                <div className="emoji-grid" role="menu">
+                  {group.emojis.map((emoji) => (
+                    <button
+                      key={`${group.label}-${emoji}`}
+                      type="button"
+                      role="menuitem"
+                      aria-label={`Insert ${emoji}`}
+                      onClick={() => insertEmoji(emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </details>
       </div>
       <EditorContent editor={editor} />
     </div>

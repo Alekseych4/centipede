@@ -289,6 +289,71 @@ button:disabled {
   color: var(--brand);
 }
 
+.emoji-picker {
+  position: relative;
+}
+
+.emoji-picker summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.emoji-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.emoji-panel {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: min(23rem, calc(100vw - 2rem));
+  max-height: 20rem;
+  overflow-y: auto;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(35, 41, 24, 0.16);
+}
+
+.emoji-section + .emoji-section {
+  margin-top: 0.7rem;
+}
+
+.emoji-section h4 {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
+  gap: 0.25rem;
+}
+
+.emoji-grid button {
+  width: 100%;
+  height: 2rem;
+  padding: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
 .rich-editor-content {
   min-height: 160px;
   padding: 0.75rem;
