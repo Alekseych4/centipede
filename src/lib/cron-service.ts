@@ -1,13 +1,15 @@
 import { requireEnv } from "./env";
 import { ScheduledPost } from "./types";
 
+const CRON_API_PREFIX = "/centipede-cron-api";
+
 function getCronServiceUrl(): string {
   return requireEnv("CRON_SERVICE_URL").replace(/\/+$/, "");
 }
 
 async function callCron(path: string, init: RequestInit): Promise<void> {
   const baseUrl = getCronServiceUrl();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${baseUrl}${CRON_API_PREFIX}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
